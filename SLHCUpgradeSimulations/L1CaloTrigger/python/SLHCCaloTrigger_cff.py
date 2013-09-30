@@ -11,6 +11,13 @@ SLHCCaloTrigger  = cms.Sequence(#L1TestPatternCaloTowerProducer+
                                 L1CaloClusterIsolator+
                                 L1CaloClusterEGFilter+
                                 L1CaloClusterEGIsolator+
+				## New e/g clustering
+                                L1CaloProtoClusterProducer+
+                                L1CaloProtoClusterFilter+
+                                L1CaloProtoClusterSharing+
+                                L1CaloEgammaClusterProducer+
+                                L1CaloExtendedEgammaClusterProducer+
+				## End new e/g clustering
                                 L1CaloJetProducer+
                                 L1CaloJetFilter+
                                 L1TowerJetProducer+
@@ -25,7 +32,9 @@ SLHCCaloTrigger  = cms.Sequence(#L1TestPatternCaloTowerProducer+
                                 # L1TowerFwdJetFilter2D+
                                 L1CaloJetExpander+
                                 rawSLHCL1ExtraParticles+
-                                SLHCL1ExtraParticles
+                                rawSLHCL1ExtraParticlesNewClustering+
+                                SLHCL1ExtraParticles+
+                                SLHCL1ExtraParticlesNewClustering
                              
                                 #l1extraParticlesCalibrated
 )

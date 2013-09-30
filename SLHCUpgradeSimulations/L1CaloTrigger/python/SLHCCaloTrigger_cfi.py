@@ -77,6 +77,39 @@ L1CaloClusterEGIsolator = cms.EDProducer("L1CaloClusterEGIsolator",
                                          isolEtCut=cms.int32(-1) # isolEt<=X (goes negative due to PU subtraction)
 )
 
+## New e/g clustering
+## No isolation yet
+
+# Find seeds and build 3x3 clusters
+L1CaloProtoClusterProducer = cms.EDProducer("L1CaloProtoClusterProducer",
+    src = cms.InputTag("L1CaloTowerProducer")
+)
+
+# Keep only local maxima
+L1CaloProtoClusterFilter = cms.EDProducer("L1CaloProtoClusterFilter",
+    src = cms.InputTag("L1CaloProtoClusterProducer")
+)
+
+# Share towers for overlapping clusters
+# The e/g identification bit is computed here
+L1CaloProtoClusterSharing = cms.EDProducer("L1CaloProtoClusterSharing",
+    src = cms.InputTag("L1CaloProtoClusterFilter")
+)
+
+# Trim the 3x3 cluster for e/g clusters
+L1CaloEgammaClusterProducer = cms.EDProducer("L1CaloEgammaClusterProducer",
+    src = cms.InputTag("L1CaloProtoClusterSharing")
+)
+
+# Extend the e/g clusters in the phi direction
+# The cluster position is computed here
+L1CaloExtendedEgammaClusterProducer = cms.EDProducer("L1CaloExtendedEgammaClusterProducer",
+    src = cms.InputTag("L1CaloEgammaClusterProducer")
+)
+## End new e/g clustering
+
+
+
 
 L1CaloJetProducer = cms.EDProducer("L1CaloJetProducer",
     src = cms.InputTag("L1CaloRegionProducer")
@@ -193,6 +226,15 @@ rawSLHCL1ExtraParticles = cms.EDProducer("L1ExtraTranslator",
                               
 )
 
+# New e/g clustering
+# Translation, only for e/g for the moment
+rawSLHCL1ExtraParticlesNewClustering = cms.EDProducer("L1NewEgammaExtraTranslator",
+                                  Clusters = cms.InputTag("L1CaloExtendedEgammaClusterProducer"),
+                                  NParticles = cms.uint32(999)
+)
+# End new e/g clustering
+
+
 SLHCL1ExtraParticles = cms.EDProducer("L1ExtraCalibrator",
                                       eGamma = cms.InputTag("rawSLHCL1ExtraParticles","EGamma"),
                                       isoEGamma = cms.InputTag("rawSLHCL1ExtraParticles","IsoEGamma"),
@@ -292,3 +334,16 @@ l1extraParticlesCalibrated = cms.EDProducer("L1ExtraCalibrator",
                                             eGammaEtaPoints = cms.vdouble(0.125, 0.375, 0.625, 0.875, 1.125, 1.3645, 1.6145, 1.875, 2.125, 2.375),
                                             eGammaNewCorr = cms.vdouble(0.0952467, 0.101389, 0.10598, 0.12605, 0.162749, 0.193123, 0.249227, 0.2800289, 0.271548, 0.27855)
                                             )
+
+
+## New e/g clustering
+# Calibration, only for e/g for the moment
+SLHCL1ExtraParticlesNewClustering = cms.EDProducer("L1NewEgammaExtraCalibrator",
+                                      eGamma = cms.InputTag("rawSLHCL1ExtraParticlesNewClustering","EGamma"),
+
+                                      ## June 2013
+                                      ## New calibration. Corrections computed in bins of |eta| and interpolated with a pol1
+                                      eGammaEtaPoints = cms.vdouble(0.125, 0.375, 0.625, 0.875, 1.125, 1.3645, 1.6145, 1.875, 2.125, 2.375),
+                                      eGammaNewCorr = cms.vdouble(0.099981,0.1069587,0.110526,0.1310463,0.166935,0.190214,0.24353869,0.28157088,0.27095887,0.274285),
+                                      )
+# End new e/g clustering
