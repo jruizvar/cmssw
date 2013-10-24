@@ -31,23 +31,24 @@ class L1CaloGeometry;
 
 class L1NewEgammaExtraCalibrator:public edm::EDProducer
 {
-  public:
-	explicit L1NewEgammaExtraCalibrator( const edm::ParameterSet & );
-	 ~L1NewEgammaExtraCalibrator(  );
+    public:
+        explicit L1NewEgammaExtraCalibrator( const edm::ParameterSet & );
+        ~L1NewEgammaExtraCalibrator(  );
 
-  private:
+    private:
 
-	virtual void produce( edm::Event &, const edm::EventSetup & );
-	virtual void endJob(  );
+        virtual void produce( edm::Event &, const edm::EventSetup & );
+        virtual void endJob(  );
 
-	edm::InputTag mEgamma;
+        edm::InputTag mEgamma;
+        edm::InputTag mIsoegamma;
 
-	std::vector < double >mEgammanewcorr;
-	std::vector < double >mEgammaneweta;
+        std::vector < double >mEgammanewcorr;
+        std::vector < double >mEgammaneweta;
 
-    TGraph* mNewCalibration;
+        TGraph* mNewCalibration;
 
-	void calibrateP4( reco::LeafCandidate & );
+        void calibrateP4( reco::LeafCandidate & );
 
 
 };
@@ -58,12 +59,14 @@ class L1NewEgammaExtraCalibrator:public edm::EDProducer
 
 L1NewEgammaExtraCalibrator::L1NewEgammaExtraCalibrator( const edm::ParameterSet & iConfig ):
     mEgamma( iConfig.getParameter < edm::InputTag > ( "eGamma" ) ),
+    mIsoegamma( iConfig.getParameter < edm::InputTag > ( "isoEGamma" ) ),
     mEgammanewcorr( iConfig.getParameter < std::vector < double > > ( "eGammaNewCorr" ) ),
     mEgammaneweta( iConfig.getParameter < std::vector < double > > ( "eGammaEtaPoints" ) ),
     mNewCalibration(NULL)
 {
-	// Register Product
-	produces < l1extra::L1EmParticleCollection > ( "EGamma" );
+    // Register Product
+    produces < l1extra::L1EmParticleCollection > ( "EGamma" );
+    produces < l1extra::L1EmParticleCollection > ( "IsoEGamma" );
 
     //double x[10] = {0.125,0.375,0.625,0.875,1.125,1.3645,1.6145,1.875,2.125,2.375};
     //double y[10] = {0.0952467,0.101389,0.10598,0.12605,0.162749,0.193123,0.249227,0.2800289,0.271548,0.27855};
@@ -81,13 +84,14 @@ L1NewEgammaExtraCalibrator::~L1NewEgammaExtraCalibrator(  )
 
 void L1NewEgammaExtraCalibrator::produce( edm::Event & iEvent, const edm::EventSetup & iSetup )
 {
-	edm::Handle < l1extra::L1EmParticleCollection > eg;
-	if ( iEvent.getByLabel( mEgamma, eg ) )
-	{
-		std::auto_ptr < l1extra::L1EmParticleCollection > l1EGamma( new l1extra::L1EmParticleCollection );
-		for ( l1extra::L1EmParticleCollection::const_iterator lIt = eg->begin(  ) ; lIt != eg->end() ; ++lIt )
-		{
-			l1extra::L1EmParticle p( *lIt );
+    // egamma
+    edm::Handle < l1extra::L1EmParticleCollection > eg;
+    if ( iEvent.getByLabel( mEgamma, eg ) )
+    {
+        std::auto_ptr < l1extra::L1EmParticleCollection > l1EGamma( new l1extra::L1EmParticleCollection );
+        for ( l1extra::L1EmParticleCollection::const_iterator lIt = eg->begin(  ) ; lIt != eg->end() ; ++lIt )
+        {
+            l1extra::L1EmParticle p( *lIt );
             double lAbsEta = fabs( p.eta(  ) );
             if ( lAbsEta < 2.6 )
             {
@@ -97,7 +101,26 @@ void L1NewEgammaExtraCalibrator::produce( edm::Event & iEvent, const edm::EventS
             l1EGamma->push_back( p );
         }
         iEvent.put( l1EGamma, "EGamma" );
-	}
+    }
+
+    // isolated egamma
+    edm::Handle < l1extra::L1EmParticleCollection > ieg;
+    if ( iEvent.getByLabel( mIsoegamma, ieg ) )
+    {
+        std::auto_ptr < l1extra::L1EmParticleCollection > l1IsoEGamma( new l1extra::L1EmParticleCollection );
+        for ( l1extra::L1EmParticleCollection::const_iterator lIt = ieg->begin(  ) ; lIt != ieg->end() ; ++lIt )
+        {
+            l1extra::L1EmParticle p( *lIt );
+            double lAbsEta = fabs( p.eta(  ) );
+            if( lAbsEta < 2.6 )
+            {
+                calibrateP4( p );
+            }
+
+            l1IsoEGamma->push_back( p );
+        }
+        iEvent.put( l1IsoEGamma, "IsoEGamma" );
+    }
 
 
 }
@@ -111,9 +134,9 @@ void L1NewEgammaExtraCalibrator::endJob(  )
 
 void L1NewEgammaExtraCalibrator::calibrateP4( reco::LeafCandidate & p )
 {
-	double lAbsEta ( fabs( p.eta(  ) ) );
+    double lAbsEta ( fabs( p.eta(  ) ) );
     double factor = ( (mNewCalibration && mNewCalibration->Eval(lAbsEta)!=1) ? 1./(1.-mNewCalibration->Eval(lAbsEta)) : 1. );
-	p.setP4( math::PtEtaPhiMLorentzVector( factor * p.pt(  ), p.eta(  ), p.phi(  ), 0.0 ) );
+    p.setP4( math::PtEtaPhiMLorentzVector( factor * p.pt(  ), p.eta(  ), p.phi(  ), 0.0 ) );
 }
 
 

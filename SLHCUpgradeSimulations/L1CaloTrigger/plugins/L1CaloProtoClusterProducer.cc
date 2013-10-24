@@ -5,6 +5,8 @@
 #include "SimDataFormats/SLHC/interface/L1CaloTowerFwd.h"
 #include "SimDataFormats/SLHC/interface/L1CaloClusterWithSeedFwd.h"
 
+#include "SimDataFormats/SLHC/interface/L1TowerNav.h"
+
 
 
 class L1CaloProtoClusterProducer:public L1CaloAlgoBase < l1slhc::L1CaloTowerCollection, l1slhc::L1CaloClusterWithSeedCollection >
@@ -19,6 +21,7 @@ class L1CaloProtoClusterProducer:public L1CaloAlgoBase < l1slhc::L1CaloTowerColl
 
   private:
     int mSeedingThreshold, mClusteringThreshold;
+    int mHadThreshold;
 
 };
 
@@ -44,6 +47,8 @@ void L1CaloProtoClusterProducer::initialize(  )
   // thresholds hard-coded for the moment
   mSeedingThreshold = 4; // these are ECAL thresholds
   mClusteringThreshold = 2;
+
+  mHadThreshold = 2; // HCAL tower threshold for H/E calculation
 }
 
 
@@ -56,7 +61,7 @@ void L1CaloProtoClusterProducer::algorithm( const int &aEta, const int &aPhi )
         return;
 
     l1slhc::L1CaloTowerRef lSeed( mInputCollection, lSeedItr - mInputCollection->begin(  ) );
-    l1slhc::L1CaloClusterWithSeed lCaloCluster( lSeed );// ieta, iphi, FG are set here
+    l1slhc::L1CaloClusterWithSeed lCaloCluster( lSeed, mHadThreshold );// ieta, iphi, FG are set here
 
 
     // Building 3x3 cluster
@@ -69,6 +74,7 @@ void L1CaloProtoClusterProducer::algorithm( const int &aEta, const int &aPhi )
             {
                 continue;
             }
+
             l1slhc::L1CaloTowerCollection::const_iterator lTowerItr = fetch( lTowerEta, lTowerPhi );
             if ( lTowerItr != mInputCollection->end(  ) )
             {

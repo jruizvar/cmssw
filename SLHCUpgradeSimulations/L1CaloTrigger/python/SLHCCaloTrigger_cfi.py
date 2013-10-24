@@ -78,7 +78,6 @@ L1CaloClusterEGIsolator = cms.EDProducer("L1CaloClusterEGIsolator",
 )
 
 ## New e/g clustering
-## No isolation yet
 
 # Find seeds and build 3x3 clusters
 L1CaloProtoClusterProducer = cms.EDProducer("L1CaloProtoClusterProducer",
@@ -105,6 +104,15 @@ L1CaloEgammaClusterProducer = cms.EDProducer("L1CaloEgammaClusterProducer",
 # The cluster position is computed here
 L1CaloExtendedEgammaClusterProducer = cms.EDProducer("L1CaloExtendedEgammaClusterProducer",
     src = cms.InputTag("L1CaloEgammaClusterProducer")
+)
+
+# Isolation for e/g clusters
+L1CaloExtendedEgammaClusterIsolator = cms.EDProducer("L1CaloClusterWithSeedEGIsolator",
+                                         caloClustersTag = cms.InputTag("L1CaloExtendedEgammaClusterProducer"),
+                                         caloTowersTag = cms.InputTag("L1CaloTowerProducer"),
+                                         rhoTag = cms.InputTag("L1RhoProducer"),
+                                         maxTowerIEta=cms.int32(27), #HF is 29 and up, currently excluding tower 28 as well
+                                         isolEtCut=cms.int32(-1) # isolEt<=X (goes negative due to PU subtraction)
 )
 ## End new e/g clustering
 
@@ -229,7 +237,7 @@ rawSLHCL1ExtraParticles = cms.EDProducer("L1ExtraTranslator",
 # New e/g clustering
 # Translation, only for e/g for the moment
 rawSLHCL1ExtraParticlesNewClustering = cms.EDProducer("L1NewEgammaExtraTranslator",
-                                  Clusters = cms.InputTag("L1CaloExtendedEgammaClusterProducer"),
+                                  Clusters = cms.InputTag("L1CaloExtendedEgammaClusterIsolator"),
                                   NParticles = cms.uint32(999)
 )
 # End new e/g clustering
@@ -340,6 +348,7 @@ l1extraParticlesCalibrated = cms.EDProducer("L1ExtraCalibrator",
 # Calibration, only for e/g for the moment
 SLHCL1ExtraParticlesNewClustering = cms.EDProducer("L1NewEgammaExtraCalibrator",
                                       eGamma = cms.InputTag("rawSLHCL1ExtraParticlesNewClustering","EGamma"),
+                                      isoEGamma = cms.InputTag("rawSLHCL1ExtraParticlesNewClustering","IsoEGamma"),
 
                                       ## June 2013
                                       ## New calibration. Corrections computed in bins of |eta| and interpolated with a pol1

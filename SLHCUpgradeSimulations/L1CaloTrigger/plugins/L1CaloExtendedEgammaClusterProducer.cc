@@ -6,6 +6,8 @@
 
 #include "SLHCUpgradeSimulations/L1CaloTrigger/interface/TriggerTowerGeometry.h"
 
+#include "SimDataFormats/SLHC/interface/L1TowerNav.h"
+
 
 class L1CaloExtendedEgammaClusterProducer:public L1CaloAlgoBase < l1slhc::L1CaloClusterWithSeedCollection , l1slhc::L1CaloClusterWithSeedCollection  > 
 {

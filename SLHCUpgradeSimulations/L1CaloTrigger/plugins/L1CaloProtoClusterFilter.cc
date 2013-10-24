@@ -6,6 +6,8 @@
 
 #include "SLHCUpgradeSimulations/L1CaloTrigger/interface/TriggerTowerGeometry.h"
 
+#include "SimDataFormats/SLHC/interface/L1TowerNav.h"
+
 
 class L1CaloProtoClusterFilter:public L1CaloAlgoBase < l1slhc::L1CaloClusterWithSeedCollection , l1slhc::L1CaloClusterWithSeedCollection  > 
 {
@@ -37,7 +39,6 @@ void L1CaloProtoClusterFilter::initialize(  )
 
 void L1CaloProtoClusterFilter::algorithm( const int &aEta, const int &aPhi )
 {
-
     // Look if there is a cluster here
     l1slhc::L1CaloClusterWithSeedCollection::const_iterator lClusterItr = fetch( aEta, aPhi );
     if ( lClusterItr != mInputCollection->end(  ) )

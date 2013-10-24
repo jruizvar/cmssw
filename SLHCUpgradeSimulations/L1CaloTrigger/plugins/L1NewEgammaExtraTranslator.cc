@@ -49,6 +49,7 @@ mNparticles( iConfig.getParameter < unsigned int >( "NParticles" ) )
 {
 	// Register Product
 	produces < l1extra::L1EmParticleCollection > ( "EGamma" );
+	produces < l1extra::L1EmParticleCollection > ( "IsoEGamma" );
 
 }
 
@@ -62,9 +63,10 @@ void L1NewEgammaExtraTranslator::produce( edm::Event & iEvent, const edm::EventS
 {
 	edm::Handle < l1slhc::L1CaloClusterWithSeedCollection > clusters;
 	if ( iEvent.getByLabel( mClusters, clusters ) )
-	{
+    {
 
-		std::auto_ptr < l1extra::L1EmParticleCollection > l1EGamma( new l1extra::L1EmParticleCollection );
+        std::auto_ptr < l1extra::L1EmParticleCollection > l1EGamma( new l1extra::L1EmParticleCollection );
+        std::auto_ptr < l1extra::L1EmParticleCollection > l1IsoEGamma( new l1extra::L1EmParticleCollection );
 
 		l1slhc::L1CaloClusterWithSeedCollection finalClusters ( *clusters );
 		finalClusters.sort(  );
@@ -73,16 +75,25 @@ void L1NewEgammaExtraTranslator::produce( edm::Event & iEvent, const edm::EventS
 		{
 			// EGamma
 			if ( l1EGamma->size() != mNparticles )
-			{
-				if ( i->isEGamma(  ) )
-				{
-					l1EGamma->push_back( l1extra::L1EmParticle( i->p4(  ) ) );
-				}
-			}
+            {
+                if ( i->isEGamma(  ) )
+                {
+                    l1EGamma->push_back( l1extra::L1EmParticle( i->p4(  ) ) );
+                }
+            }
+            // Isolated EGamma
+            if ( l1IsoEGamma->size() != mNparticles )
+            {
+                if ( i->isIsoEGamma(  ) )
+                {
+                    l1IsoEGamma->push_back( l1extra::L1EmParticle( i->p4(  ) ) );
+                }
+            }
 
-		}
+        }
 
-		iEvent.put( l1EGamma, "EGamma" );
+        iEvent.put( l1EGamma, "EGamma" );
+        iEvent.put( l1IsoEGamma, "IsoEGamma" );
 	}
 
 
