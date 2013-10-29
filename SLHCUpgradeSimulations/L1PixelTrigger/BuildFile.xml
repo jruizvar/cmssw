@@ -1,0 +1,17 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/PluginManager"/>
+<use name="FWCore/ParameterSet"/>
+<use name="MagneticField/Records"/>
+<use name="CommonTools/UtilAlgos"/>
+<use name="DataFormats/L1Trigger"/>
+<use name="DataFormats/Common"/>
+<use name="DataFormats/TrackReco"/>
+<use name="DataFormats/StdDictionaries"/>
+<use name="RecoLocalTracker/SiPixelRecHits"/>
+<use name="SimDataFormats/PileupSummaryInfo"/>
+<use name="SimDataFormats/TrackingAnalysis"/>
+<use name="SimDataFormats/Track"/>
+<use name="SimDataFormats/Vertex"/>
+<use name="SimDataFormats/GeneratorProducts"/>
+<flags EDM_PLUGIN="1"/>
+
