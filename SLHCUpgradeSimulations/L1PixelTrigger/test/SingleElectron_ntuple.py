@@ -59,7 +59,7 @@ process.NtupleMaker = cms.EDAnalyzer('L1PixelTrigger',
     eGammaCrystal = cms.InputTag("SLHCL1ExtraParticlesNewClustering","EGamma")
 )
 process.p = cms.Path(process.NtupleMaker)
-process.TFileService = cms.Service("TFileService", fileName = cms.string('SingleElectron_PU140_ntuple.root') )
+process.TFileService = cms.Service("TFileService", fileName = cms.string('SingleElectron_NoPU_ntuple.root') )
 
 # Schedule definition
 process.schedule = cms.Schedule(process.pL1Calo,process.BeamSpot,process.reconstruction_step,process.p)
