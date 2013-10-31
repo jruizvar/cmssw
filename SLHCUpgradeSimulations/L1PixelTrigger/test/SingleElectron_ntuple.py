@@ -55,8 +55,8 @@ process.pL1Calo = cms.Path( process.SLHCCaloTrigger )
 # Analyzer 
 #################################################################################################
 process.NtupleMaker = cms.EDAnalyzer('L1PixelTrigger',
-    eGamma = cms.InputTag("SLHCL1ExtraParticles","EGamma"),
-    eGammaCrystal = cms.InputTag("SLHCL1ExtraParticlesNewClustering","EGamma")
+    eGamma = cms.InputTag("SLHCL1ExtraParticles","IsoEGamma"),
+    eGammaCrystal = cms.InputTag("SLHCL1ExtraParticlesNewClustering","IsoEGamma")
 )
 process.p = cms.Path(process.NtupleMaker)
 process.TFileService = cms.Service("TFileService", fileName = cms.string('SingleElectron_NoPU_ntuple.root') )
