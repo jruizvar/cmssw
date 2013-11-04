@@ -15,7 +15,6 @@ process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
 process.load('Configuration.Geometry.GeometryExtendedPhase2TkBE5DReco_cff')
 process.load('Configuration.StandardSequences.MagneticField_38T_PostLS1_cff')
-process.load('Configuration.StandardSequences.RawToDigi_Data_cff')
 process.load('Configuration.StandardSequences.Reconstruction_Data_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
@@ -41,7 +40,6 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'POSTLS261_V2::All', '')
 
 # Path and EndPath definitions
-process.raw2digi_step = cms.Path(process.RawToDigi)
 process.reconstruction_step = cms.Path(process.pixeltrackerlocalreco)
 process.calolocalreco_step = cms.Path( process.calolocalreco )
 
@@ -59,7 +57,7 @@ process.NtupleMaker = cms.EDAnalyzer('L1PixelTrigger',
     eGammaCrystal = cms.InputTag("SLHCL1ExtraParticlesNewClustering","IsoEGamma")
 )
 process.p = cms.Path(process.NtupleMaker)
-process.TFileService = cms.Service("TFileService", fileName = cms.string('SingleElectron_NoPU_ntuple.root') )
+process.TFileService = cms.Service("TFileService", fileName = cms.string('test_ntuple.root') )
 
 # Schedule definition
 process.schedule = cms.Schedule(process.pL1Calo,process.BeamSpot,process.reconstruction_step,process.p)
