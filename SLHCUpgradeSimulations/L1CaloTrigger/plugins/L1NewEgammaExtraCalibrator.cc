@@ -92,12 +92,11 @@ void L1NewEgammaExtraCalibrator::produce( edm::Event & iEvent, const edm::EventS
         for ( l1extra::L1EmParticleCollection::const_iterator lIt = eg->begin(  ) ; lIt != eg->end() ; ++lIt )
         {
             l1extra::L1EmParticle p( *lIt );
-            double lAbsEta = fabs( p.eta(  ) );
-            if ( lAbsEta < 2.6 )
-            {
+            //double lAbsEta = fabs( p.eta(  ) );
+            //if ( lAbsEta < 2.6 )
+            //{
                 calibrateP4( p );
-            }
-
+            //}
             l1EGamma->push_back( p );
         }
         iEvent.put( l1EGamma, "EGamma" );
@@ -111,11 +110,11 @@ void L1NewEgammaExtraCalibrator::produce( edm::Event & iEvent, const edm::EventS
         for ( l1extra::L1EmParticleCollection::const_iterator lIt = ieg->begin(  ) ; lIt != ieg->end() ; ++lIt )
         {
             l1extra::L1EmParticle p( *lIt );
-            double lAbsEta = fabs( p.eta(  ) );
-            if( lAbsEta < 2.6 )
-            {
+            //double lAbsEta = fabs( p.eta(  ) );
+            //if( lAbsEta < 2.6 )
+            //{
                 calibrateP4( p );
-            }
+            //}
 
             l1IsoEGamma->push_back( p );
         }
@@ -134,7 +133,9 @@ void L1NewEgammaExtraCalibrator::endJob(  )
 
 void L1NewEgammaExtraCalibrator::calibrateP4( reco::LeafCandidate & p )
 {
-    double lAbsEta ( fabs( p.eta(  ) ) );
+    double lAbsEta = fabs( p.eta(  ) ) ;
+    double etaMax = mNewCalibration->GetX()[mNewCalibration->GetN()-1];
+    if(lAbsEta>etaMax) lAbsEta = etaMax; // don't extrapolate the calibration
     double factor = ( (mNewCalibration && mNewCalibration->Eval(lAbsEta)!=1) ? 1./(1.-mNewCalibration->Eval(lAbsEta)) : 1. );
     p.setP4( math::PtEtaPhiMLorentzVector( factor * p.pt(  ), p.eta(  ), p.phi(  ), 0.0 ) );
 }

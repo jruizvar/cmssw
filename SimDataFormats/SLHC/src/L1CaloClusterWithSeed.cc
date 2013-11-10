@@ -9,11 +9,15 @@ namespace l1slhc
 {
 
     L1CaloClusterWithSeed::L1CaloClusterWithSeed(  ):
+        mSeedThreshold(4),
+        mEmThreshold(2),
         mHadThreshold(2),
         mIeta( 0 ),
         mIphi( 0 ),
         mEmEt( 0 ),
         mHadEt( 0 ),
+        mTrimmedPlus(false),
+        mTrimmedMinus(false),
         mFg( false ),
         mEgamma( false ),
         mEgammavalue( 0 ), 
@@ -27,11 +31,15 @@ namespace l1slhc
     }
 
     L1CaloClusterWithSeed::L1CaloClusterWithSeed( const int &iEta, const int &iPhi ):
+        mSeedThreshold(2),
+        mEmThreshold(2),
         mHadThreshold(2),
         mIeta( iEta ),
         mIphi( iPhi ),
         mEmEt( 0 ),
         mHadEt( 0 ),
+        mTrimmedPlus(false),
+        mTrimmedMinus(false),
         mFg( false ),
         mEgamma( false ),
         mEgammavalue( 0 ), 
@@ -44,13 +52,17 @@ namespace l1slhc
     {
     }
 
-    L1CaloClusterWithSeed::L1CaloClusterWithSeed( const L1CaloTowerRef & seed, int hadThreshold ):
+    L1CaloClusterWithSeed::L1CaloClusterWithSeed( const L1CaloTowerRef & seed, int seedThreshold, int emThreshold, int hadThreshold ):
         mSeedTower(seed),
+        mSeedThreshold(seedThreshold),
+        mEmThreshold(emThreshold),
         mHadThreshold(hadThreshold),
         mIeta( seed->iEta() ),
         mIphi( seed->iPhi() ),
         mEmEt( seed->E() ),
         mHadEt( (seed->H()>=hadThreshold ? seed->H() : 0.) ),
+        mTrimmedPlus(false),
+        mTrimmedMinus(false),
         mFg( seed->EcalFG() ),
         mEgamma( false ),
         mEgammavalue( 0 ), 
@@ -61,6 +73,10 @@ namespace l1slhc
         mInnerphi( 0 ), 
         mP4( math::PtEtaPhiMLorentzVector( 0.001, 0, 0, 0. ) )
     {
+        if(seed->E()<mSeedThreshold)
+        {
+            std::cout<<"L1CaloClusterWithSeed: WARNING: Trying to seed a cluster with a tower below the seeding threshold\n";
+        }
     }
 
 
@@ -109,6 +125,16 @@ namespace l1slhc
         return mHadEt;
     }
 
+    bool L1CaloClusterWithSeed::trimmedPlus(  ) const
+    {
+        return mTrimmedPlus;
+    }
+
+    bool L1CaloClusterWithSeed::trimmedMinus(  ) const
+    {
+        return mTrimmedMinus;
+    }
+
 
     bool L1CaloClusterWithSeed::fg(  ) const
     {
@@ -128,7 +154,7 @@ namespace l1slhc
 
     bool L1CaloClusterWithSeed::isEGamma(  ) const
     {
-        return ( !fg(  ) && eGamma(  ) );
+        return ( !(seedEmEt()>6 && fg(  )) && eGamma(  ) );
     }
 
     const bool & L1CaloClusterWithSeed::isoEG(  ) const
@@ -148,7 +174,7 @@ namespace l1slhc
 
     bool L1CaloClusterWithSeed::isIsoEGamma(  ) const
     {
-        return ( !fg(  ) && eGamma(  ) && isoEG(  ) );
+        return ( !(seedEmEt()>6 && fg(  )) && eGamma(  ) && isoEG(  ) );
     }
 
     void L1CaloClusterWithSeed::setEmEt( int E )
@@ -160,6 +186,17 @@ namespace l1slhc
     {
         mHadEt = H;
     }
+
+    void L1CaloClusterWithSeed::setTrimmedPlus( bool trimmed)
+    {
+        mTrimmedPlus = trimmed;
+    }
+
+    void L1CaloClusterWithSeed::setTrimmedMinus( bool trimmed)
+    {
+        mTrimmedMinus = trimmed;
+    }
+    
 
     void L1CaloClusterWithSeed::setConstituents( const L1CaloTowerRefVector & cons )
     {
@@ -215,8 +252,8 @@ namespace l1slhc
 
     void L1CaloClusterWithSeed::addConstituent( const L1CaloTowerRef & tower )
     {
-        mEmEt  += tower->E(  );
-        mHadEt += (tower->H()>=mHadThreshold ? tower->H(  ) : 0.);
+        mEmEt  += (tower->E()>=mEmThreshold ? tower->E(  ) : 0);
+        mHadEt += (tower->H()>=mHadThreshold ? tower->H(  ) : 0);
         mConstituents.push_back( tower );
         mConstituentSharing.push_back(0);
     }
@@ -227,7 +264,7 @@ namespace l1slhc
         mFriends.push_back( tower );
     }
 
-    int L1CaloClusterWithSeed::hasConstituent( int eta, int phi )
+    int L1CaloClusterWithSeed::hasConstituent( int eta, int phi ) const
     {
         for ( unsigned int i = 0; i < mConstituents.size(  ); ++i )
         {
@@ -301,7 +338,7 @@ namespace l1slhc
 
     int L1CaloClusterWithSeed::seedEmEt() const
     {
-        return mSeedTower->E();
+        return (mSeedTower->E()>=mSeedThreshold ? mSeedTower->E() : 0);
     }
 
     int L1CaloClusterWithSeed::seedHadEt() const
@@ -309,14 +346,14 @@ namespace l1slhc
         return (mSeedTower->H()>=mHadThreshold ? mSeedTower->H() : 0.);
     }
 
-    int L1CaloClusterWithSeed::constituentEmEt(int eta, int phi)
+    int L1CaloClusterWithSeed::constituentEmEt(int eta, int phi) const
     {
         int pos = hasConstituent( eta, phi );
 
         int lConstituentE = 0;
         if ( pos != -1 )
         {
-            lConstituentE = mConstituents[pos]->E();
+            lConstituentE = (mConstituents[pos]->E()>=mEmThreshold ? mConstituents[pos]->E() : 0);
             int lSharing = mConstituentSharing[pos];
             switch(lSharing)
             {
@@ -342,14 +379,14 @@ namespace l1slhc
         return lConstituentE;
     }
 
-    int L1CaloClusterWithSeed::constituentHadEt(int eta, int phi)
+    int L1CaloClusterWithSeed::constituentHadEt(int eta, int phi) const
     {
         int pos = hasConstituent( eta, phi );
 
         int lConstituentH = 0;
         if ( pos != -1 )
         {
-            lConstituentH = (mConstituents[pos]->H()>=mHadThreshold ? mConstituents[pos]->H() : 0.);
+            lConstituentH = (mConstituents[pos]->H()>=mHadThreshold ? mConstituents[pos]->H() : 0);
             int lSharing = mConstituentSharing[pos];
             switch(lSharing)
             {

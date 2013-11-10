@@ -96,19 +96,21 @@ L1CaloProtoClusterSharing = cms.EDProducer("L1CaloProtoClusterSharing",
 )
 
 # Trim the 3x3 cluster for e/g clusters
+# Extend the e/g clusters in the phi direction
+# The cluster position is computed here
 L1CaloEgammaClusterProducer = cms.EDProducer("L1CaloEgammaClusterProducer",
     src = cms.InputTag("L1CaloProtoClusterSharing")
 )
 
 # Extend the e/g clusters in the phi direction
 # The cluster position is computed here
-L1CaloExtendedEgammaClusterProducer = cms.EDProducer("L1CaloExtendedEgammaClusterProducer",
-    src = cms.InputTag("L1CaloEgammaClusterProducer")
-)
+#L1CaloExtendedEgammaClusterProducer = cms.EDProducer("L1CaloExtendedEgammaClusterProducer",
+#    src = cms.InputTag("L1CaloEgammaClusterProducer")
+#)
 
 # Isolation for e/g clusters
-L1CaloExtendedEgammaClusterIsolator = cms.EDProducer("L1CaloClusterWithSeedEGIsolator",
-                                         caloClustersTag = cms.InputTag("L1CaloExtendedEgammaClusterProducer"),
+L1CaloEgammaClusterIsolator = cms.EDProducer("L1CaloClusterWithSeedEGIsolator",
+                                         caloClustersTag = cms.InputTag("L1CaloEgammaClusterProducer"),
                                          caloTowersTag = cms.InputTag("L1CaloTowerProducer"),
                                          rhoTag = cms.InputTag("L1RhoProducer"),
                                          maxTowerIEta=cms.int32(27), #HF is 29 and up, currently excluding tower 28 as well
@@ -237,7 +239,7 @@ rawSLHCL1ExtraParticles = cms.EDProducer("L1ExtraTranslator",
 # New e/g clustering
 # Translation, only for e/g for the moment
 rawSLHCL1ExtraParticlesNewClustering = cms.EDProducer("L1NewEgammaExtraTranslator",
-                                  Clusters = cms.InputTag("L1CaloExtendedEgammaClusterIsolator"),
+                                  Clusters = cms.InputTag("L1CaloEgammaClusterIsolator"),
                                   NParticles = cms.uint32(999)
 )
 # End new e/g clustering

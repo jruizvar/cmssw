@@ -79,7 +79,8 @@ void L1CaloProtoClusterProducer::algorithm( const int &aEta, const int &aPhi )
             if ( lTowerItr != mInputCollection->end(  ) )
             {
                 int lTowerE = lTowerItr->E();
-                if( lTowerE >= mClusteringThreshold )
+                int lTowerH = lTowerItr->H();
+                if( lTowerE >= mClusteringThreshold || lTowerH >= mHadThreshold)
                 {
                     l1slhc::L1CaloTowerRef lRef( mInputCollection, lTowerItr - mInputCollection->begin(  ) );
                     lCaloCluster.addConstituent( lRef );
@@ -90,13 +91,13 @@ void L1CaloProtoClusterProducer::algorithm( const int &aEta, const int &aPhi )
     }
     // add phi extensions as friends for later e/g extended clusters production (at this stage their energies are not added to the cluster energy)
     l1slhc::L1CaloTowerCollection::const_iterator lTowerPhiPlusItr = fetch( aEta, aPhi+2);
-    if(lTowerPhiPlusItr != mInputCollection->end() && lTowerPhiPlusItr->E()>mClusteringThreshold)
+    if(lTowerPhiPlusItr != mInputCollection->end() && lTowerPhiPlusItr->E()>=mClusteringThreshold)
     {
         l1slhc::L1CaloTowerRef lRef( mInputCollection, lTowerPhiPlusItr - mInputCollection->begin() );
         lCaloCluster.addFriend( lRef );
     }
     l1slhc::L1CaloTowerCollection::const_iterator lTowerPhiMinusItr = fetch( aEta, aPhi-2);
-    if(lTowerPhiMinusItr != mInputCollection->end() && lTowerPhiMinusItr->E()>mClusteringThreshold)
+    if(lTowerPhiMinusItr != mInputCollection->end() && lTowerPhiMinusItr->E()>=mClusteringThreshold)
     {
         l1slhc::L1CaloTowerRef lRef( mInputCollection, lTowerPhiMinusItr - mInputCollection->begin() );
         lCaloCluster.addFriend( lRef );

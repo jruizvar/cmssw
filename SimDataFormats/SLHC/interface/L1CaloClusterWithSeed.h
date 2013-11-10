@@ -41,7 +41,7 @@ namespace l1slhc
         public:
         L1CaloClusterWithSeed(  );
         L1CaloClusterWithSeed( const int &, const int & );
-        L1CaloClusterWithSeed( const L1CaloTowerRef & seed, int hadThreshold=2 );
+        L1CaloClusterWithSeed( const L1CaloTowerRef & seed, int seedThreshold=4, int emThreshold=2, int hadThreshold=2 );
         ~L1CaloClusterWithSeed(  );
 
         void setFg( bool  );	// Set FG Bit
@@ -54,8 +54,10 @@ namespace l1slhc
         void setConstituents( const L1CaloTowerRefVector & );
         void setEmEt( int  );
         void setHadEt( int  );
+        void setTrimmedPlus( bool trimmed=true);
+        void setTrimmedMinus( bool trimmed=true);
         void addConstituent( const L1CaloTowerRef & );
-        int hasConstituent( int , int  );
+        int hasConstituent( int , int  ) const;
         void removeConstituent( int , int  );
         void addFriend(const L1CaloTowerRef & );
         int hasFriend( int , int  );
@@ -67,6 +69,8 @@ namespace l1slhc
         int Et(int mode=0x3) const;	// Compressed Et SH: name change  mode = bit 1 add EmEt, bit 2 add HadEt, I had to make this a non-reference variable as it returns the sum of mEmEt + mHadEt, leave as is for now
         int EmEt(  ) const;	// Compressed ECAL Et 
         int HadEt(  ) const;	// Compressed HCAL Et
+        bool trimmedPlus() const;
+        bool trimmedMinus() const;
         int innerEta(  ) const;	// Weighted position eta
         int innerPhi(  ) const;	// Weighted position phi
         L1CaloTowerRef getSeedTower(  ) const;
@@ -74,8 +78,8 @@ namespace l1slhc
         L1CaloTowerRef getConstituent( int );
         int seedEmEt() const;
         int seedHadEt() const;
-        int constituentEmEt(int , int );
-        int constituentHadEt(int , int );
+        int constituentEmEt(int , int ) const;
+        int constituentHadEt(int , int ) const;
         void shareConstituent(int, int, int);
         L1CaloTowerRef getFriend( int );
 
@@ -106,6 +110,8 @@ namespace l1slhc
         std::vector<int>     mConstituentSharing; 
         L1CaloTowerRefVector mFriends;
 
+        int mSeedThreshold;
+        int mEmThreshold;
         int mHadThreshold;// for H/E calculation
 
         // Coordinates of the reference Point 
@@ -114,6 +120,8 @@ namespace l1slhc
         int mEmEt;
         int mHadEt;
 
+        bool mTrimmedPlus;
+        bool mTrimmedMinus;
         bool mFg;
         bool mEgamma;
         int mEgammavalue;

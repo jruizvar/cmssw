@@ -46,39 +46,72 @@ void L1CaloExtendedEgammaClusterProducer::algorithm( const int &aEta, const int 
     if ( lClusterItr != mInputCollection->end(  ) )
     {
         l1slhc::L1CaloClusterWithSeed lExtendedEgammaCluster( *lClusterItr );
-        int posPhiPlus  = lExtendedEgammaCluster.hasConstituent(0, 1);
-        int posPhiMinus = lExtendedEgammaCluster.hasConstituent(0, -1);
+        //int posPhiPlus  = lExtendedEgammaCluster.hasConstituent(0, 1);
+        //int posPhiMinus = lExtendedEgammaCluster.hasConstituent(0, -1);
+        int EPhiPlus  = lExtendedEgammaCluster.constituentEmEt(0,1);
+        int EPhiMinus = lExtendedEgammaCluster.constituentEmEt(0,-1);
 
         // Try to extend the cluster starting from non-zero phi+/-1 towers
-        if(posPhiPlus!=-1)
+        if(EPhiPlus>0)
         {
             int posExtPlus = lExtendedEgammaCluster.hasFriend(0, 2);
             if(posExtPlus!=-1)
             {
-                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighborItr = fetch( aEta, aPhi+3 );
-                if(lNeighborItr==mInputCollection->end() ||  // no neighbor cluster
-                        lExtendedEgammaCluster.seedEmEt() > lNeighborItr->seedEmEt() ||  // larger seed E
-                        (lExtendedEgammaCluster.seedEmEt()==lNeighborItr->seedEmEt() && lExtendedEgammaCluster.EmEt()>lNeighborItr->EmEt()) // larger cluster E (favor cluster with larger phi)
-                        ) 
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor1Itr = fetch( aEta-1, aPhi+2 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor2Itr = fetch( aEta, aPhi+2 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor3Itr = fetch( aEta+1, aPhi+2 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor4Itr = fetch( aEta-1, aPhi+3 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor5Itr = fetch( aEta, aPhi+3 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor6Itr = fetch( aEta+1, aPhi+3 );
+                if(lNeighbor1Itr==mInputCollection->end() &&
+                        lNeighbor2Itr==mInputCollection->end() &&
+                        lNeighbor3Itr==mInputCollection->end() &&
+                        lNeighbor4Itr==mInputCollection->end() &&
+                        lNeighbor5Itr==mInputCollection->end() &&
+                        lNeighbor6Itr==mInputCollection->end()
+                        )
                 {
-                    lExtendedEgammaCluster.addConstituent( lExtendedEgammaCluster.getFriend(posExtPlus) );
-                    lExtendedEgammaCluster.removeFriend(0, 2); 
+                    l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor7Itr = fetch( aEta, aPhi+4 );
+                    if(lNeighbor7Itr==mInputCollection->end() ||  // no neighbor cluster
+                            lNeighbor7Itr->constituentEmEt(0,-1)==0 ||
+                             lExtendedEgammaCluster.EmEt()>lNeighbor7Itr->EmEt() // larger cluster E (favor cluster with larger phi)
+                      ) 
+                    {
+                        lExtendedEgammaCluster.addConstituent( lExtendedEgammaCluster.getFriend(posExtPlus) );
+                        lExtendedEgammaCluster.removeFriend(0, 2); 
+                    }
                 }
             }
         }
-        if(posPhiMinus!=-1)
+        if(EPhiMinus>0)
         {
             int posExtMinus = lExtendedEgammaCluster.hasFriend(0, -2);
             if(posExtMinus!=-1)
             {
-                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighborItr = fetch( aEta, aPhi-3 );
-                if(lNeighborItr==mInputCollection->end() ||  // no neighbor cluster
-                        lExtendedEgammaCluster.seedEmEt() > lNeighborItr->seedEmEt() ||  // larger seed E
-                        (lExtendedEgammaCluster.seedEmEt()==lNeighborItr->seedEmEt() && lExtendedEgammaCluster.EmEt()>=lNeighborItr->EmEt()) // larger or equal cluster E (favor cluster with larger phi)
-                        ) 
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor1Itr = fetch( aEta-1, aPhi-2 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor2Itr = fetch( aEta, aPhi-2 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor3Itr = fetch( aEta+1, aPhi-2 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor4Itr = fetch( aEta-1, aPhi-3 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor5Itr = fetch( aEta, aPhi-3 );
+                l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor6Itr = fetch( aEta+1, aPhi-3 );
+                if(lNeighbor1Itr==mInputCollection->end() &&
+                        lNeighbor2Itr==mInputCollection->end() &&
+                        lNeighbor3Itr==mInputCollection->end() &&
+                        lNeighbor4Itr==mInputCollection->end() &&
+                        lNeighbor5Itr==mInputCollection->end() &&
+                        lNeighbor6Itr==mInputCollection->end()
+                        )
                 {
-                    lExtendedEgammaCluster.addConstituent( lExtendedEgammaCluster.getFriend(posExtMinus) );
-                    lExtendedEgammaCluster.removeFriend(0, -2); 
+
+                    l1slhc::L1CaloClusterWithSeedCollection::const_iterator lNeighbor7Itr = fetch( aEta, aPhi-4 );
+                    if(lNeighbor7Itr==mInputCollection->end() ||  // no neighbor cluster
+                            lNeighbor7Itr->constituentEmEt(0,1)==0 ||
+                            lExtendedEgammaCluster.EmEt()>=lNeighbor7Itr->EmEt() // larger or equal cluster E (favor cluster with larger phi)
+                      ) 
+                    {
+                        lExtendedEgammaCluster.addConstituent( lExtendedEgammaCluster.getFriend(posExtMinus) );
+                        lExtendedEgammaCluster.removeFriend(0, -2); 
+                    }
                 }
             }
         }

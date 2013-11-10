@@ -58,8 +58,8 @@ class L1CaloClusterWithSeedEGIsolator : public edm::EDProducer {
         void produce(edm::Event &, const edm::EventSetup &);
 
 
-        int egEcalIsolation(int iEta,int iPhi)const; //takes reco style iPhi, iEta, ie -32, 32, 1 to 72
-        int egHcalIsolation(int iEta,int iPhi)const;//takes reco style iPhi, iEta
+        int egEcalIsolation(int iEta,int iPhi, int vetoEta)const; //takes reco style iPhi, iEta, ie -32, 32, 1 to 72
+        int egHcalIsolation(int iEta,int iPhi, int vetoPhi)const;//takes reco style iPhi, iEta
 
         template<class T> typename T::const_iterator getObject(const int& trigEta,const int &trigPhi,const edm::Handle<T>& handle)const;
 
@@ -124,8 +124,12 @@ void L1CaloClusterWithSeedEGIsolator::algorithm( const int &trigEta, const int &
         //if(clusIt->isCentral()){
         l1slhc::L1CaloClusterWithSeed newCluster(*clusIt);
         //we may want to cut on em + had seperately, right now we dont as at this WP, the performance is the same but it changes for other efficiencies
-        int emIsolEt = egEcalIsolation(newCluster.iEta(),newCluster.iPhi());
-        int hadIsolEt = egHcalIsolation(newCluster.iEta(),newCluster.iPhi());
+        int vetoEta = 1;
+        int vetoPhi = 1;
+        if(newCluster.trimmedPlus() && !newCluster.trimmedMinus()) vetoEta = -1;
+        if(newCluster.constituentEmEt(0,-1)>newCluster.constituentEmEt(0,1)) vetoPhi = -1;
+        int emIsolEt = egEcalIsolation(newCluster.iEta(),newCluster.iPhi(), vetoEta);
+        int hadIsolEt = egHcalIsolation(newCluster.iEta(),newCluster.iPhi(), vetoPhi);
         newCluster.setIsoEmAndHadEtEG(emIsolEt,hadIsolEt);  
 
         int nrTowers = caloTowersHandle_->size(); //we are using this as a proxy for rho for now. this will change
@@ -142,7 +146,7 @@ void L1CaloClusterWithSeedEGIsolator::algorithm( const int &trigEta, const int &
 //going to experiment with different vetos for HCAL and ECAL isolation
 //this is simple veto, 2 tower wide
 //iEta, iPhi is the cluster seed (leading tower)
-int L1CaloClusterWithSeedEGIsolator::egEcalIsolation(int iEta,int iPhi)const
+int L1CaloClusterWithSeedEGIsolator::egEcalIsolation(int iEta,int iPhi, int vetoEta) const
 {
 
     //first we need the lead tower 
@@ -165,6 +169,7 @@ int L1CaloClusterWithSeedEGIsolator::egEcalIsolation(int iEta,int iPhi)const
         }
     }
 
+
     int isolEmEt=0;
     //now loop over +/-2 towers in eta and +/-4 in phi (be carefull in the endcap)
     for(int etaNr=-2;etaNr<=2;etaNr++){
@@ -177,7 +182,7 @@ int L1CaloClusterWithSeedEGIsolator::egEcalIsolation(int iEta,int iPhi)const
             //vetoing +/-2 in phi from leadTower and iEta = cluster which is towerIEta and towerIEta+1
             if(abs(phiNr)<=2){
                 if(towerIEta==iEta) continue;
-                if(towerIEta==L1TowerNav::getOffsetIEta(iEta,1)) continue; //eta veto region
+                if(towerIEta==L1TowerNav::getOffsetIEta(iEta,vetoEta)) continue; //eta veto region
             }
             l1slhc::L1CaloTowerCollection::const_iterator towerIt = caloTowersHandle_->find(towerIEta,towerIPhi);
             if(towerIt!=caloTowersHandle_->end()) isolEmEt+=towerIt->E();
@@ -191,7 +196,7 @@ int L1CaloClusterWithSeedEGIsolator::egEcalIsolation(int iEta,int iPhi)const
 //going to experiment with different vetos for HCAL and ECAL isolation
 //this is simple veto, 2 tower wide
 //iEta, iPhi is the cluster seed (leading tower)
-int L1CaloClusterWithSeedEGIsolator::egHcalIsolation(int iEta,int iPhi)const
+int L1CaloClusterWithSeedEGIsolator::egHcalIsolation(int iEta,int iPhi, int vetoPhi)const
 {
     // if(iEta!=-26 || iPhi!=22) return 0; 
 
@@ -229,8 +234,8 @@ int L1CaloClusterWithSeedEGIsolator::egHcalIsolation(int iEta,int iPhi)const
             //    std::cout <<"towerIEta "<<towerIEta<<" towerIPhi "<<towerIPhi<<" iphi "<<iPhi<<" offset iphi "<<L1TowerNav::getOffsetIPhi(iEta,iPhi,phiNr)<<std::endl;
 
             //somewhat confusing, should just be checking if the tower in is in the 1x2 of the cluster with eta = leadTower, its below leadTower for -ve eta, above lead Tower for +ve eta
-            int localPhiVeto = iEta>0 ? 1 : -1;
-            if(etaNr==0 && (phiNr==0 || phiNr==localPhiVeto)) continue; //eta veto region
+            //int localPhiVeto = iEta>0 ? 1 : -1;
+            if(etaNr==0 && (phiNr==0 || phiNr==vetoPhi)) continue; //eta veto region
 
             l1slhc::L1CaloTowerCollection::const_iterator towerIt = caloTowersHandle_->find(towerIEta,towerIPhi);
 
