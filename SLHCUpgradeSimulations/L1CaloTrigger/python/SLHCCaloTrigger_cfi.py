@@ -96,19 +96,21 @@ L1CaloProtoClusterSharing = cms.EDProducer("L1CaloProtoClusterSharing",
 )
 
 # Trim the 3x3 cluster for e/g clusters
+# Extend the e/g clusters in the phi direction
+# The cluster position is computed here
 L1CaloEgammaClusterProducer = cms.EDProducer("L1CaloEgammaClusterProducer",
     src = cms.InputTag("L1CaloProtoClusterSharing")
 )
 
 # Extend the e/g clusters in the phi direction
 # The cluster position is computed here
-L1CaloExtendedEgammaClusterProducer = cms.EDProducer("L1CaloExtendedEgammaClusterProducer",
-    src = cms.InputTag("L1CaloEgammaClusterProducer")
-)
+#L1CaloExtendedEgammaClusterProducer = cms.EDProducer("L1CaloExtendedEgammaClusterProducer",
+#    src = cms.InputTag("L1CaloEgammaClusterProducer")
+#)
 
 # Isolation for e/g clusters
-L1CaloExtendedEgammaClusterIsolator = cms.EDProducer("L1CaloClusterWithSeedEGIsolator",
-                                         caloClustersTag = cms.InputTag("L1CaloExtendedEgammaClusterProducer"),
+L1CaloEgammaClusterIsolator = cms.EDProducer("L1CaloClusterWithSeedEGIsolator",
+                                         caloClustersTag = cms.InputTag("L1CaloEgammaClusterProducer"),
                                          caloTowersTag = cms.InputTag("L1CaloTowerProducer"),
                                          rhoTag = cms.InputTag("L1RhoProducer"),
                                          maxTowerIEta=cms.int32(27), #HF is 29 and up, currently excluding tower 28 as well
@@ -237,7 +239,7 @@ rawSLHCL1ExtraParticles = cms.EDProducer("L1ExtraTranslator",
 # New e/g clustering
 # Translation, only for e/g for the moment
 rawSLHCL1ExtraParticlesNewClustering = cms.EDProducer("L1NewEgammaExtraTranslator",
-                                  Clusters = cms.InputTag("L1CaloExtendedEgammaClusterIsolator"),
+                                  Clusters = cms.InputTag("L1CaloEgammaClusterIsolator"),
                                   NParticles = cms.uint32(999)
 )
 # End new e/g clustering
@@ -347,12 +349,24 @@ l1extraParticlesCalibrated = cms.EDProducer("L1ExtraCalibrator",
 ## New e/g clustering
 # Calibration, only for e/g for the moment
 SLHCL1ExtraParticlesNewClustering = cms.EDProducer("L1NewEgammaExtraCalibrator",
-                                      eGamma = cms.InputTag("rawSLHCL1ExtraParticlesNewClustering","EGamma"),
-                                      isoEGamma = cms.InputTag("rawSLHCL1ExtraParticlesNewClustering","IsoEGamma"),
+                                                   eGamma = cms.InputTag("rawSLHCL1ExtraParticlesNewClustering","EGamma"),
+                                                   isoEGamma = cms.InputTag("rawSLHCL1ExtraParticlesNewClustering","IsoEGamma"),
 
-                                      ## June 2013
-                                      ## New calibration. Corrections computed in bins of |eta| and interpolated with a pol1
-                                      eGammaEtaPoints = cms.vdouble(0.125, 0.375, 0.625, 0.875, 1.125, 1.3645, 1.6145, 1.875, 2.125, 2.375),
-                                      eGammaNewCorr = cms.vdouble(0.099981,0.1069587,0.110526,0.1310463,0.166935,0.190214,0.24353869,0.28157088,0.27095887,0.274285),
-                                      )
+                                                   ## June 2013
+                                                   ## New calibration. Corrections computed in bins of |eta| and interpolated with a pol1
+                                                   eGammaEtaPoints = cms.vdouble(0.1250,0.3750,0.6250,0.8750,1.1250,1.3645,1.6145,1.8750,2.1250,2.3750),
+                                                   eGammaNewCorr = cms.vdouble(0.0932,0.1016,0.1049,0.1262,0.1569,0.1862,0.2320,0.2765,0.2679,0.2679)
+                                                  )
+## Calibration factors for DATA
+#SLHCL1ExtraParticlesNewClustering.eGammaNewCorr = cms.vdouble(0.0932,0.1016,0.1049,0.1262,0.1569,0.1862,0.2320,0.2765,0.2679,0.2679)
+
+## Calibration factors for MC
+#SLHCL1ExtraParticlesNewClustering.eGammaNewCorr = cms.vdouble(0.0429,0.0492,0.0546,0.0722,0.1047,0.1238,0.2220,0.2436,0.2106,0.2042)
+
+## Calibration factors to scale new clusters on current trigger, DATA
+#SLHCL1ExtraParticlesNewClustering.eGammaNewCorr = cms.vdouble(0.0771,0.0826,0.0839,0.0934,0.1240,0.1349,0.1923,0.2193,0.2052,0.1733)
+
+## Calibration factors to scale new clusters on current trigger, MC
+#SLHCL1ExtraParticlesNewClustering.eGammaNewCorr = cms.vdouble(0.0866,0.1035,0.1067,0.1285,0.1734,0.1959,0.2239,0.2382,0.1797,0.1325)
+
 # End new e/g clustering

@@ -69,6 +69,10 @@ void L1CaloProtoClusterSharing::algorithm( const int &aEta, const int &aPhi )
                 // And find max and 2nd max neighbor cluster
                 int maxE = 0;
                 int secondMaxE = 0;
+                int maxEta = 999;
+                int secondMaxEta = 999;
+                int maxPhi = 999;
+                int secondMaxPhi = 999;
                 l1slhc::L1CaloClusterWithSeedCollection::const_iterator maxCluster = mInputCollection->end(  );
                 l1slhc::L1CaloClusterWithSeedCollection::const_iterator secondMaxCluster = mInputCollection->end(  );
                 for(int lClusterEta = lTowerEta-1; lClusterEta <= lTowerEta+1; ++lClusterEta)
@@ -87,38 +91,61 @@ void L1CaloProtoClusterSharing::algorithm( const int &aEta, const int &aPhi )
                                 if(lNeighborItr->EmEt()>maxE)
                                 {
                                     secondMaxE       = maxE;
+                                    secondMaxEta     = maxEta;
+                                    secondMaxPhi     = maxPhi;
                                     secondMaxCluster = maxCluster;
                                     maxE             = lNeighborItr->EmEt();
+                                    maxEta           = lClusterEta;
+                                    maxPhi           = lClusterPhi;
                                     maxCluster       = lNeighborItr;
                                 }
                                 else
                                 {
                                     secondMaxE       = lNeighborItr->EmEt();
                                     secondMaxCluster = lNeighborItr;
+                                    secondMaxEta     = lClusterEta;
+                                    secondMaxPhi     = lClusterPhi;
                                 }
                             }
 
                         }
                     }
                 }
+                // In case of equal energies look at the position
+                int dphi = abs(lTowerPhi-aPhi);
+                int deta = abs(lTowerEta-aEta);
+                int maxdphi = abs(lTowerPhi-maxPhi);
+                int maxdeta = abs(lTowerEta-maxEta);
+                int secondMaxdphi = abs(lTowerPhi-secondMaxPhi);
+                int secondMaxdeta = abs(lTowerEta-secondMaxEta);
+                bool bad = false;
+                bool badSecond = false;
+                if(dphi>maxdphi) bad = true;
+                else if(dphi==maxdphi && deta>maxdeta) bad = true;
+                else if(dphi==maxdphi && deta==maxdeta && maxPhi>aPhi) bad = true;
+                else if(dphi==maxdphi && deta==maxdeta && maxPhi==aPhi && maxEta>aEta) bad = true;
+
+                if(dphi>secondMaxdphi) badSecond = true;
+                else if(dphi==secondMaxdphi && deta>secondMaxdeta) badSecond = true;
+                else if(dphi==secondMaxdphi && deta==secondMaxdeta && secondMaxPhi>aPhi) badSecond = true;
+                else if(dphi==secondMaxdphi && deta==secondMaxdeta && secondMaxPhi==aPhi && secondMaxEta>aEta) badSecond = true;
+
                 // Share energy depending on the rank of the cluster
                 if(secondMaxE>lClusterItr->EmEt()) // 3rd or more -> give all the tower energy
                 {
                     lSharedCluster.shareConstituent(lTowerEta-aEta, lTowerPhi-aPhi, 5);
                 }
-                else if(secondMaxE==lClusterItr->EmEt() && 
-                        (secondMaxCluster->iEta() > lClusterItr->iEta() || (secondMaxCluster->iEta()==lClusterItr->iEta() && secondMaxCluster->iPhi()>lClusterItr->iPhi()) )
-                       ) // 2nd ex-aequo, favor cluster with biggest ieta, and biggest iphi -> give all the tower energy
+                else if(secondMaxE==lClusterItr->EmEt() && badSecond)
                 {
                     lSharedCluster.shareConstituent(lTowerEta-aEta, lTowerPhi-aPhi, 5);
                 }
                 else // 2nd or 1st
                 {
-                    if(lClusterItr->EmEt() >= 4*maxE) // -> keep all the tower energy
+                    if(lClusterItr->EmEt() > 4*maxE) // -> keep all the tower energy
                     {
                         lSharedCluster.shareConstituent(lTowerEta-aEta, lTowerPhi-aPhi, 0);
                     }
-                    else if(lClusterItr->EmEt() >= 2*maxE) // -> keep 3/4 of the tower energy
+                    else if(lClusterItr->EmEt() > 2*maxE) // -> keep 3/4 of the tower energy
                     {
                         lSharedCluster.shareConstituent(lTowerEta-aEta, lTowerPhi-aPhi, 1);
                     }
@@ -126,9 +153,7 @@ void L1CaloProtoClusterSharing::algorithm( const int &aEta, const int &aPhi )
                     {
                         lSharedCluster.shareConstituent(lTowerEta-aEta, lTowerPhi-aPhi, 2);
                     }
-                    else if(lClusterItr->EmEt() == maxE && 
-                            (maxCluster->iEta() < lClusterItr->iEta() || (maxCluster->iEta()==lClusterItr->iEta() && maxCluster->iPhi()<lClusterItr->iPhi()))
-                           ) // 1st ex-aequo, favor cluster with biggest ieta, and biggest iphi
+                    else if(lClusterItr->EmEt() == maxE && !bad)
                     {
                         lSharedCluster.shareConstituent(lTowerEta-aEta, lTowerPhi-aPhi, 2); // -> keep 1/2+ of the tower energy (+1 if tower energy is odd)
                     }
@@ -155,8 +180,8 @@ void L1CaloProtoClusterSharing::algorithm( const int &aEta, const int &aPhi )
 
 
         // Electron Bit Decision
-        bool egammaBitEB =  (abs(lSharedCluster.iEta())<=16 && lElectronValue<=mHoECutEB); 
-        bool egammaBitEE =  (abs(lSharedCluster.iEta())>16 && lElectronValue<=mHoECutEE);
+        bool egammaBitEB =  (abs(lSharedCluster.iEta())<=17 && lElectronValue<=mHoECutEB); 
+        bool egammaBitEE =  (abs(lSharedCluster.iEta())>17 && lElectronValue<=mHoECutEE);
 
 
         // FineGrain bit already set in the initialization of the cluster using the FG of the seed tower
