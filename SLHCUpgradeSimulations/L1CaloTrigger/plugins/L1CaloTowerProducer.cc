@@ -61,21 +61,19 @@ class L1CaloTowerProducer:public edm::EDProducer
 	edm::InputTag mHcalDigiInputTag;
 
 	bool mUseupgradehcal;
-
 };
 
 
 
 
 L1CaloTowerProducer::L1CaloTowerProducer( const edm::ParameterSet & aConfig ):
-  mCaloTowers( NULL ), 
+  mCaloTowers( NULL ),
   mEcalDigiInputTag( aConfig.getParameter < edm::InputTag > ( "ECALDigis" ) ),
   mHcalDigiInputTag( aConfig.getParameter < edm::InputTag > ( "HCALDigis" ) ),
-  mUseupgradehcal  ( aConfig.getParameter < bool > ( "UseUpgradeHCAL" ) )
+  mUseupgradehcal( aConfig.getParameter < bool > ( "UseUpgradeHCAL" ) )
 {
   // Register Product
   produces < l1slhc::L1CaloTowerCollection > (  );
-
 }
 
 
@@ -84,39 +82,40 @@ L1CaloTowerProducer::~L1CaloTowerProducer(  )
 
 }
 
-void L1CaloTowerProducer::addHcal( const int &aCompressedEt, const int  &aIeta,
-				   const int &aIphi,         const bool &aFG )
+void L1CaloTowerProducer::addHcal( const int &aCompressedEt, const int &aIeta,
+								   const int &aIphi, const bool & aFG )
 {
 	if ( aCompressedEt > 0 )
 	{
-	        int lET = ( int )( 2 * mHcalScale->et( aCompressedEt, abs( aIeta ), ( aIeta > 0 ? +1 : -1 ) ) );
+		int lET = ( int )( 2 * mHcalScale->et( aCompressedEt,
+											   abs( aIeta ),
+											   ( aIeta > 0 ? +1 : -1 ) ) );
 
 		l1slhc::L1CaloTowerCollection::iterator lItr = mCaloTowers -> find ( aIeta, aIphi  );
 
-		// If the TT already exists in the output collection, just modify its HCAL energy
 		if ( lItr != ( *mCaloTowers ).end(  ) )
 		{
 			if ( lET > mCaloTriggerSetup->hcalActivityThr(  ) )
 				lItr->setHcal( lET, aFG );
 		}
 		else
-		{ // Create a new TT and add to the collection
+		{
 			l1slhc::L1CaloTower lCaloTower( aIeta, aIphi );
 			lCaloTower.setHcal( lET, aFG );
-
 			if ( lET > mCaloTriggerSetup->hcalActivityThr(  ) )
 				mCaloTowers->insert( aIeta , aIphi , lCaloTower );
 		}
-		
 	}
 }
 
-void L1CaloTowerProducer::addEcal( const int &aCompressedEt, const int  &aIeta,
-				   const int &aIphi,         const bool &aFG )
+void L1CaloTowerProducer::addEcal( const int &aCompressedEt, const int &aIeta,
+								   const int &aIphi, const bool & aFG )
 {
 	if ( aCompressedEt > 0 )
 	{
-		int lET = ( int )( 2 * mEcalScale->et( aCompressedEt, abs( aIeta ), ( aIeta > 0 ? +1 : -1 ) ) );
+		int lET = ( int )( 2 * mEcalScale->et( aCompressedEt,
+											   abs( aIeta ),
+											   ( aIeta > 0 ? +1 : -1 ) ) );
 
 		l1slhc::L1CaloTower lCaloTower( aIeta, aIphi );
 		lCaloTower.setEcal( lET, aFG );
@@ -127,12 +126,12 @@ void L1CaloTowerProducer::addEcal( const int &aCompressedEt, const int  &aIeta,
 	}
 }
 
-void L1CaloTowerProducer::produce( edm::Event & aEvent, const edm::EventSetup & aSetup )
+void L1CaloTowerProducer::produce( edm::Event & aEvent,
+								   const edm::EventSetup & aSetup )
 {
 
 	// create a new l1slhc::L1CaloTowerCollection (auto_ptr should handle deletion of the last one correctly)
 	mCaloTowers = std::auto_ptr < l1slhc::L1CaloTowerCollection > ( new l1slhc::L1CaloTowerCollection );
-
 
 	// Setup Calo Scales
 	edm::ESHandle < L1CaloEcalScale > lEcalScaleHandle;
@@ -150,7 +149,7 @@ void L1CaloTowerProducer::produce( edm::Event & aEvent, const edm::EventSetup & 
 
 
 	// Loop through the TPGs
-	// getting data from event takes 3 orders of magnitude longer than anything else in the program : O(10-100ms) cf O(10-100us)
+	//getting data from event takes 3 orders of magnitude longer than anything else in the program : O(10-100ms) cf O(10-100us)
 	edm::Handle < EcalTrigPrimDigiCollection > lEcalDigiHandle;
 	aEvent.getByLabel( mEcalDigiInputTag, lEcalDigiHandle );
 
@@ -159,7 +158,7 @@ void L1CaloTowerProducer::produce( edm::Event & aEvent, const edm::EventSetup & 
 
 	if ( !mUseupgradehcal )
 	{
-		// getting data from event takes 3 orders of magnitude longer than anything else in the program : O(10-100ms) cf O(10-100us)
+		//getting data from event takes 3 orders of magnitude longer than anything else in the program : O(10-100ms) cf O(10-100us)
 		edm::Handle < HcalTrigPrimDigiCollection > lHcalDigiHandle;
 		aEvent.getByLabel( mHcalDigiInputTag, lHcalDigiHandle );
 
@@ -189,7 +188,6 @@ void L1CaloTowerProducer::produce( edm::Event & aEvent, const edm::EventSetup & 
 #endif
 	}
 	aEvent.put( mCaloTowers );
-
 }
 
 

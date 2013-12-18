@@ -74,8 +74,6 @@ public:
   double z0() const {return z0_;}
 
   double r() const {return stubs_[0].r();}
-  double z() const {return stubs_[0].z();}
-
 
 private:
 
