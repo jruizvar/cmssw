@@ -192,7 +192,6 @@ namespace edm {
 
   void
   PoolSource::readEvent_(EventPrincipal& eventPrincipal) {
-    EventSourceSentry sentry{*this};
     primaryFileSequence_->readEvent(eventPrincipal);
     if(secondaryFileSequence_ && !branchIDsToReplace_[InEvent].empty()) {
       bool found = secondaryFileSequence_->skipToItem(eventPrincipal.run(),
@@ -214,16 +213,28 @@ namespace edm {
   }
 
   bool
-  PoolSource::readIt(EventID const& id, EventPrincipal& eventPrincipal) {
+  PoolSource::readIt(EventID const& id, EventPrincipal& eventPrincipal, StreamContext& streamContext) {
     bool found = primaryFileSequence_->skipToItem(id.run(), id.luminosityBlock(), id.event());
     if(!found) return false;
+    EventSourceSentry sentry(*this, streamContext);
     readEvent_(eventPrincipal);
     return true;
   }
 
   InputSource::ItemType
   PoolSource::getNextItemType() {
-    return primaryFileSequence_->getNextItemType();;
+    RunNumber_t run = IndexIntoFile::invalidRun;
+    LuminosityBlockNumber_t lumi = IndexIntoFile::invalidLumi;
+    EventNumber_t event = IndexIntoFile::invalidEvent;
+    InputSource::ItemType itemType = primaryFileSequence_->getNextItemType(run, lumi, event);
+    if(secondaryFileSequence_ && (IsSynchronize != state())) {
+      if(itemType == IsRun || itemType == IsLumi || itemType == IsEvent) {
+        if(!secondaryFileSequence_->containedInCurrentFile(run, lumi, event)) {
+          return IsSynchronize;
+        }
+      }
+    }
+    return itemType;
   }
 
   void

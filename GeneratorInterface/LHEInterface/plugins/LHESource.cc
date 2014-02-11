@@ -66,6 +66,7 @@ void LHESource::nextEvent()
 
 	bool newFileOpened = false;
 	partonLevel = reader->next(&newFileOpened);
+
 	if(newFileOpened) incrementFileIndex();
 	if (!partonLevel) {
 		return;
@@ -143,16 +144,21 @@ bool LHESource::setRunAndEventInfo(edm::EventID&, edm::TimeValue_t&)
 void
 LHESource::readEvent_(edm::EventPrincipal& eventPrincipal) {
 	assert(eventCached() || processingMode() != RunsLumisAndEvents);
-	EventSourceSentry sentry(*this);
 	edm::EventAuxiliary aux(eventID(), processGUID(), edm::Timestamp(presentTime()), false);
 	aux.setProcessHistoryID(phid_);
 	eventPrincipal.fillEventPrincipal(aux, processHistoryRegistryForUpdate());
 
 	std::auto_ptr<LHEEventProduct> product(
-			new LHEEventProduct(*partonLevel->getHEPEUP()));
+		     new LHEEventProduct(*partonLevel->getHEPEUP(),
+					 partonLevel->originalXWGTUP())
+		     );
 	if (partonLevel->getPDF()) {
 		product->setPDF(*partonLevel->getPDF());
-        }
+        }		
+	std::for_each(partonLevel->weights().begin(),
+		      partonLevel->weights().end(),
+		      boost::bind(&LHEEventProduct::addWeight,
+				  product.get(), _1));
 	std::for_each(partonLevel->getComments().begin(),
 	              partonLevel->getComments().end(),
 	              boost::bind(&LHEEventProduct::addComment,

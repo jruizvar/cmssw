@@ -153,6 +153,8 @@ namespace edm {
                                                               *processConfiguration_,
                                                               &(historyAppenders_[index]),
                                                               index));
+      ep->preModuleDelayedGetSignal_.connect(std::cref(items.actReg_->preModuleEventDelayedGetSignal_));
+      ep->postModuleDelayedGetSignal_.connect(std::cref(items.actReg_->postModuleEventDelayedGetSignal_));
       principalCache_.insert(ep);
     }
     if(subProcessParameterSet) {
@@ -497,10 +499,10 @@ namespace edm {
   SubProcess::propagateProducts(BranchType type, Principal const& parentPrincipal, Principal& principal) const {
     SelectedProducts const& keptVector = keptProducts()[type];
     for(auto const& item : keptVector) {
-      ProductHolderBase const* parentProductHolder = parentPrincipal.getProductHolder(item->branchID(), false, false, nullptr);
+      ProductHolderBase const* parentProductHolder = parentPrincipal.getProductHolder(item->branchID());
       if(parentProductHolder != nullptr) {
         ProductData const& parentData = parentProductHolder->productData();
-        ProductHolderBase const* productHolder = principal.getProductHolder(item->branchID(), false, false, nullptr);
+        ProductHolderBase const* productHolder = principal.getProductHolder(item->branchID());
         if(productHolder != nullptr) {
           ProductData& thisData = const_cast<ProductData&>(productHolder->productData());
           //Propagate the per event(run)(lumi) data for this product to the subprocess.

@@ -19,6 +19,7 @@ is the DataBlock.
 #include "DataFormats/Provenance/interface/EventAuxiliary.h"
 #include "DataFormats/Provenance/interface/EventSelectionID.h"
 #include "FWCore/Utilities/interface/StreamID.h"
+#include "FWCore/Utilities/interface/Signal.h"
 #include "FWCore/Framework/interface/Principal.h"
 
 #include "boost/shared_ptr.hpp"
@@ -36,6 +37,7 @@ namespace edm {
   class HistoryAppender;
   class LuminosityBlockPrincipal;
   class ModuleCallingContext;
+  class StreamContext;
   class ProcessHistoryRegistry;
   class RunPrincipal;
   class UnscheduledHandler;
@@ -45,7 +47,7 @@ namespace edm {
     typedef EventAuxiliary Auxiliary;
     typedef Principal Base;
 
-    typedef Base::ConstProductPtr ConstProductPtr;
+    typedef Base::ConstProductHolderPtr ConstProductHolderPtr;
     static int const invalidBunchXing = EventAuxiliary::invalidBunchXing;
     static int const invalidStoreNumber = EventAuxiliary::invalidStoreNumber;
     EventPrincipal(
@@ -164,7 +166,11 @@ namespace edm {
     }
 
     using Base::getProvenance;
+    
+    signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> preModuleDelayedGetSignal_;
+    signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> postModuleDelayedGetSignal_;
 
+    
   private:
 
     BranchID pidToBid(ProductID const& pid) const;
@@ -172,9 +178,7 @@ namespace edm {
     virtual bool unscheduledFill(std::string const& moduleLabel,
                                  ModuleCallingContext const* mcc) const override;
 
-    virtual void resolveProduct_(ProductHolderBase const& phb,
-                                 bool fillOnDemand,
-                                 ModuleCallingContext const* mcc) const override;
+    virtual void readFromSource_(ProductHolderBase const& phb, ModuleCallingContext const* mcc) const override;
 
     virtual unsigned int transitionIndex_() const override;
     

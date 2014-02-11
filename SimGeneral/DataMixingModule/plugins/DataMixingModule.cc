@@ -10,6 +10,7 @@
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/Utilities/interface/EDMException.h"
 #include "FWCore/Framework/interface/ConstProductRegistry.h"
+#include "FWCore/Framework/interface/ConsumesCollector.h"
 #include "FWCore/Framework/interface/ModuleContextSentry.h"
 #include "FWCore/ServiceRegistry/interface/InternalContext.h"
 #include "FWCore/ServiceRegistry/interface/ModuleCallingContext.h"
@@ -163,7 +164,8 @@ namespace edm
       produces< ZDCDigiCollection >();
 
       if(MergeHcalDigisProd_) {
-	HcalDigiWorkerProd_ = new DataMixingHcalDigiWorkerProd(ps);
+        edm::ConsumesCollector iC(consumesCollector());
+	HcalDigiWorkerProd_ = new DataMixingHcalDigiWorkerProd(ps, iC);
 	HcalDigiWorkerProd_->setHBHEAccess(tok_hbhe_);
 	HcalDigiWorkerProd_->setHOAccess(tok_ho_);
 	HcalDigiWorkerProd_->setHFAccess(tok_hf_);
@@ -406,12 +408,14 @@ namespace edm
 
 
   
-  void DataMixingModule::doPileUp(edm::Event &e, const edm::EventSetup& ES, edm::ModuleCallingContext const* mcc)
+  void DataMixingModule::doPileUp(edm::Event &e, const edm::EventSetup& ES)
   {
     std::vector<edm::EventID> recordEventID;
     std::vector<int> PileupList;
     PileupList.clear();
     TrueNumInteractions_.clear();
+
+    ModuleCallingContext const* mcc = e.moduleCallingContext();
 
     for (int bunchCrossing=minBunch_;bunchCrossing<=maxBunch_;++bunchCrossing) {
       for (unsigned int isource=0;isource<maxNbSources_;++isource) {

@@ -31,9 +31,12 @@ from Validation.RecoEgamma.egammaValidation_cff import *
 from Validation.RecoParticleFlow.PFJetValidation_cff  import *
 from Validation.RecoParticleFlow.PFMETValidation_cff import *
 from Validation.RecoParticleFlow.PFMuonValidation_cff import *
+from Validation.RecoParticleFlow.PFElectronValidation_cff import *
+from Validation.RecoParticleFlow.PFJetResValidation_cff import *
 from Validation.RPCRecHits.rpcRecHitValidation_cfi import *
 from Validation.DTRecHits.DTRecHitQuality_cfi import *
 from Validation.RecoTau.DQMMCValidation_cfi import *
+from Validation.L1T.L1Validator_cfi import *
 from DQMOffline.RecoB.dqmAnalyzer_cff import *
 
 # filter/producer "pre-" sequence for globalValidation
@@ -78,9 +81,12 @@ globalValidation = cms.Sequence(   trackerHitsValidation
                                  + egammaValidation
                                  + pfJetValidationSequence
                                  + pfMETValidationSequence
+                                 + pfElectronValidationSequence
+                                 + pfJetResValidationSequence
                                  + pfMuonValidationSequence
                                  + rpcRecHitValidation_step
 				 + dtLocalRecoValidation_no2D
                                  + pfTauRunDQMValidation
                                  + bTagPlotsMCbcl
+                                 + L1Validator
 )

@@ -4,9 +4,9 @@
 #include "CondCore/DBCommon/interface/Exception.h"
 #include "CondCore/DBCommon/interface/Auth.h"
 
+#include "CondCore/CondDB/interface/ConnectionPool.h"
 #include "CondCore/CondDB/interface/Session.h"
 #include "CondCore/CondDB/interface/Utils.h"
-#include "CondCore/CondDB/interface/Configuration.h"
 
 #include "CondCore/CondDB/src/DbCore.h"
 
@@ -48,7 +48,7 @@
     };\
 
 
-namespace conddb {
+namespace cond {
 
   d_table( GT ){
     d_column( tagid, int );
@@ -70,14 +70,10 @@ namespace conddb {
       int execute();
   };
 
-  using Session = new_impl::Session;
-  //using IOVproxy = new_impl::IOVProxy;
-  using IOVEditor = new_impl::IOVEditor;
-  using GTProxy = new_impl::GTProxy;
-  using GTEditor = new_impl::GTEditor;
+  using namespace persistency;
 }
 
-conddb::MigrateGTUtilities::MigrateGTUtilities():Utilities("conddb_test_gt_import"){
+cond::MigrateGTUtilities::MigrateGTUtilities():Utilities("conddb_test_gt_import"){
   addConnectOption("sourceConnect","s","source connection string(required)");
   addConnectOption("destConnect","d","destionation connection string(required)");
   addAuthenticationOptions();
@@ -85,7 +81,7 @@ conddb::MigrateGTUtilities::MigrateGTUtilities():Utilities("conddb_test_gt_impor
   addOption<bool>("verbose","v","verbose print out (optional)");
 }
 
-bool conddb::MigrateGTUtilities::getGTList( const std::string& gt, 
+bool cond::MigrateGTUtilities::getGTList( const std::string& gt, 
 					   std::vector<std::tuple<std::string,std::string,std::string,std::string,std::string> >&tagList ){
   cond::DbSession gtSession =  openDbSession("sourceConnect",cond::Auth::COND_READER_ROLE,true);
   gtSession.transaction().start(true);
@@ -102,7 +98,7 @@ bool conddb::MigrateGTUtilities::getGTList( const std::string& gt,
   GT::tname = gtTable;
   TAGINV::tname = "TAGINVENTORY_TABLE";
 
-  Query< TAGINV::tagname, TAGINV::objectname, TAGINV::recordname, TAGINV::labelname, TAGINV::pfn > q( schema );
+  persistency::Query< TAGINV::tagname, TAGINV::objectname, TAGINV::recordname, TAGINV::labelname, TAGINV::pfn > q( schema );
   q.addCondition<GT::tagid, TAGINV::tagid>();
   q.addOrderClause<TAGINV::tagname>();
   for ( auto row : q ) {
@@ -114,7 +110,7 @@ bool conddb::MigrateGTUtilities::getGTList( const std::string& gt,
   return ret;
 }
 
-int conddb::MigrateGTUtilities::execute(){
+int cond::MigrateGTUtilities::execute(){
 
   std::string gtag = getOptionValue<std::string>("globaltag");
   bool debug = hasDebug();
@@ -125,9 +121,9 @@ int conddb::MigrateGTUtilities::execute(){
   std::vector<std::tuple<std::string,std::string,std::string,std::string,std::string> > gtlist;
   if(! getGTList( gtag, gtlist ) ) throw std::runtime_error( std::string("GT ")+gtag+" has not been found." );
 
-  Session session;
-  if( hasDebug() ) session.configuration().setMessageVerbosity( coral::Debug );
-  session.open( destConnect );
+  ConnectionPool connPool;
+  if( hasDebug() ) connPool.setMessageVerbosity( coral::Debug );
+  Session session = connPool.createSession( destConnect, true );
   session.transaction().start( false );
 
   GTEditor newGT = session.createGlobalTag( gtag );
@@ -170,7 +166,7 @@ int conddb::MigrateGTUtilities::execute(){
 
 int main( int argc, char** argv ){
 
-  conddb::MigrateGTUtilities utilities;
+  cond::MigrateGTUtilities utilities;
   return utilities.run(argc,argv);
 }
 
