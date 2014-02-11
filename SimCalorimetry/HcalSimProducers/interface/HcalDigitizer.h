@@ -11,8 +11,11 @@
 #include "SimCalorimetry/HcalSimAlgos/interface/ZDCHitFilter.h"
 #include "SimCalorimetry/HcalSimProducers/interface/HcalHitRelabeller.h"
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
+#include "Geometry/HcalCommonData/interface/HcalDDDRecConstants.h"
 #include "DataFormats/DetId/interface/DetId.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
+#include "DataFormats/HcalCalibObjects/interface/HEDarkening.h"
+#include "DataFormats/HcalCalibObjects/interface/HFRecalibration.h"
 
 #include <vector>
 
@@ -58,10 +61,14 @@ private:
   /// exist in the geometry
   void checkGeometry(const edm::EventSetup& eventSetup);
   const CaloGeometry * theGeometry;
+  const HcalDDDRecConstants * theRecNumber;
   void updateGeometry(const edm::EventSetup& eventSetup);
 
   void buildHOSiPMCells(const std::vector<DetId>& allCells, const edm::EventSetup& eventSetup);
 
+  //function to evaluate aging at the digi level
+  void darkening(std::vector<PCaloHit>& hcalHits);
+  
   /** Reconstruction algorithm*/
   typedef CaloTDigitizer<HBHEDigitizerTraits> HBHEDigitizer;
   typedef CaloTDigitizer<HODigitizerTraits>   HODigitizer;
@@ -130,6 +137,10 @@ private:
   std::string hitsProducer_;
 
   int theHOSiPMCode;
+  
+  double deliveredLumi;
+  HEDarkening* m_HEDarkening;
+  HFRecalibration* m_HFRecalibration;
 };
 
 #endif

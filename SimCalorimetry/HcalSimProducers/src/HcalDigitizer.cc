@@ -23,6 +23,7 @@
 #include "SimCalorimetry/CaloSimAlgos/interface/CaloTDigitizer.h"
 #include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
+#include "Geometry/Records/interface/HcalRecNumberingRecord.h"
 #include "CalibFormats/HcalObjects/interface/HcalDbService.h"
 #include "CalibFormats/HcalObjects/interface/HcalDbRecord.h"
 #include "SimDataFormats/CrossingFrame/interface/CrossingFrame.h"
@@ -35,6 +36,8 @@
 #include "CondFormats/HcalObjects/interface/HcalCholeskyMatrices.h"
 #include <boost/foreach.hpp>
 #include "Geometry/CaloTopology/interface/HcalTopology.h"
+#include "SimDataFormats/CaloTest/interface/HcalTestNumbering.h"
+#include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
 
 namespace HcalDigitizerImpl {
 
@@ -109,6 +112,7 @@ HcalDigitizer::HcalDigitizer(const edm::ParameterSet& ps) :
   theHOSiPMHitFilter(HcalOuter),
   theZDCHitFilter(),
   theHitCorrection(0),
+  theTimeSlewSim(0),
   theNoiseGenerator(0),
   theNoiseHitGenerator(0),
   theHBHEDigitizer(0),
@@ -126,7 +130,10 @@ HcalDigitizer::HcalDigitizer(const edm::ParameterSet& ps) :
   hbhegeo(true),
   hogeo(true),
   hfgeo(true),
-  theHOSiPMCode(ps.getParameter<edm::ParameterSet>("ho").getParameter<int>("siPMCode"))
+  theHOSiPMCode(ps.getParameter<edm::ParameterSet>("ho").getParameter<int>("siPMCode")),
+  deliveredLumi(0.),
+  m_HEDarkening(0),
+  m_HFRecalibration(0)
 {
   bool doNoise = ps.getParameter<bool>("doNoise");
   bool useOldNoiseHB = ps.getParameter<bool>("useOldHB");
@@ -140,6 +147,9 @@ HcalDigitizer::HcalDigitizer(const edm::ParameterSet& ps) :
   double HOtp = ps.getParameter<double>("HOTuningParameter");
   bool doHBHEUpgrade = ps.getParameter<bool>("HBHEUpgradeQIE");
   bool doHFUpgrade   = ps.getParameter<bool>("HFUpgradeQIE");
+  deliveredLumi      = ps.getParameter<double>("DelivLuminosity");
+  bool agingFlagHE   = ps.getParameter<bool>("HEDarkening");
+  bool agingFlagHF   = ps.getParameter<bool>("HFDarkening");
 
   // need to make copies, because they might get different noise generators
   theHBHEAmplifier = new HcalAmplifier(theParameterMap, doNoise);
@@ -316,6 +326,9 @@ HcalDigitizer::HcalDigitizer(const edm::ParameterSet& ps) :
   if (theHitCorrection!=0) theHitCorrection->setRandomEngine(engine);
 
   hitsProducer_ = ps.getParameter<std::string>("hitsProducer");
+  
+  if(agingFlagHE) m_HEDarkening = new HEDarkening();
+  if(agingFlagHF) m_HFRecalibration = new HFRecalibration();
 }
 
 
@@ -433,9 +446,13 @@ void HcalDigitizer::accumulateCaloHits(edm::Handle<std::vector<PCaloHit> > const
   // Step A: pass in inputs, and accumulate digirs
   if(isHCAL) {
     std::vector<PCaloHit> hcalHits = *hcalHandle.product();
+    //evaluate darkening before relabeling
+    if(m_HEDarkening || m_HFRecalibration){
+      darkening(hcalHits);
+    }
     if (relabel_) {
       // Relabel PCaloHits
-      edm::LogInfo("HcalDigitizer") << "Calling Relabller";
+      edm::LogInfo("HcalDigitizer") << "Calling Relabeller";
       theRelabeller->process(hcalHits);
     }
     if(theHitCorrection != 0) {
@@ -585,10 +602,12 @@ void HcalDigitizer::checkGeometry(const edm::EventSetup & eventSetup) {
   // TODO find a way to avoid doing this every event
   edm::ESHandle<CaloGeometry> geometry;
   eventSetup.get<CaloGeometryRecord>().get(geometry);
+  edm::ESHandle<HcalDDDRecConstants> pHRNDC;
+  eventSetup.get<HcalRecNumberingRecord>().get(pHRNDC);
   // See if it's been updated
-  if(&*geometry != theGeometry)
-  {
+   if(&*geometry != theGeometry) {
     theGeometry = &*geometry;
+    theRecNumber= &*pHRNDC;
     updateGeometry(eventSetup);
   }
 }
@@ -601,7 +620,7 @@ void  HcalDigitizer::updateGeometry(const edm::EventSetup & eventSetup) {
   if(theHOSiPMResponse) theHOSiPMResponse->setGeometry(theGeometry);
   theHFResponse->setGeometry(theGeometry);
   theZDCResponse->setGeometry(theGeometry);
-  if(theRelabeller) theRelabeller->setGeometry(theGeometry);
+  if(theRelabeller) theRelabeller->setGeometry(theGeometry,theRecNumber);
 
   const std::vector<DetId>& hbCells = theGeometry->getValidDetIds(DetId::Hcal, HcalBarrel);
   const std::vector<DetId>& heCells = theGeometry->getValidDetIds(DetId::Hcal, HcalEndcap);
@@ -647,7 +666,7 @@ void HcalDigitizer::buildHOSiPMCells(const std::vector<DetId>& allCells, const e
     edm::ESHandle<HcalMCParams> p;
     eventSetup.get<HcalMCParamsRcd>().get(p);
     edm::ESHandle<HcalTopology> htopo;
-    eventSetup.get<IdealGeometryRecord>().get(htopo);
+    eventSetup.get<HcalRecNumberingRecord>().get(htopo);
    
     HcalMCParams mcParams(*p.product());
     if (mcParams.topo()==0) {
@@ -682,6 +701,35 @@ void HcalDigitizer::buildHOSiPMCells(const std::vector<DetId>& allCells, const e
   }
 }
 
-      
+void HcalDigitizer::darkening(std::vector<PCaloHit>& hcalHits){
+
+  for (unsigned int ii=0; ii<hcalHits.size(); ++ii) {
+    uint32_t tmpId = hcalHits[ii].id();
+    int det, z, depth, ieta, phi, lay;
+    HcalTestNumbering::unpackHcalIndex(tmpId,det,z,depth,ieta,phi,lay);
+	
+    bool darkened = false;
+    float dweight = 1.;
+	
+    //HE darkening
+    if(det==int(HcalEndcap) && m_HEDarkening){
+      dweight = m_HEDarkening->degradation(deliveredLumi,ieta,lay-2);//NB:diff. layer count
+      darkened = true;
+    }
+	
+    //HF darkening - approximate: invert recalibration factor
+    else if(det==int(HcalForward) && m_HFRecalibration){
+      dweight = 1.0/m_HFRecalibration->getCorr(ieta,depth,deliveredLumi);
+      darkened = true;
+    }
+	
+    //create new hit with darkened energy
+    //if(darkened) hcalHits[ii] = PCaloHit(hcalHits[ii].energyEM()*dweight,hcalHits[ii].energyHad()*dweight,hcalHits[ii].time(),hcalHits[ii].geantTrackId(),hcalHits[ii].id());
+    
+    //reset hit energy
+    if(darkened) hcalHits[ii].setEnergy(hcalHits[ii].energy()*dweight);	
+  }
+  
+}
     
 

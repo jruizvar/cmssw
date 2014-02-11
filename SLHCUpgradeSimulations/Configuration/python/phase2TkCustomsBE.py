@@ -24,6 +24,8 @@ def customise(process):
         process=customise_harvesting(process)
     if hasattr(process,'validation_step'):
         process=customise_Validation(process,float(n))
+    if hasattr(process,'L1TrackTrigger_step'):
+        process=customise_TrackTrigger(process)
     process=customise_condOverRides(process)
     
     return process
@@ -56,7 +58,7 @@ def customise_Digi(process):
     process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTECHighTof"))
     process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIDLowTof"))
     process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIDHighTof"))
-
+    
     return process
 
 
@@ -127,7 +129,7 @@ def customise_Reco(process,pileup):
     del process.muonSeededStepExtra 
     del process.muonSeededStep
     del process.muonSeededStepDebug
-
+    
     # add the correct tracking back in
     process.load("RecoTracker.Configuration.RecoTrackerPhase2BE_cff")
 
@@ -216,21 +218,20 @@ def l1EventContent(process):
     for a in alist:
         b=a+'output'
         if hasattr(process,b):
-            getattr(process,b).outputCommands.append('keep PSimHits_g4SimHits_*_*')
-            getattr(process,b).outputCommands.append('keep SimTracks_g4SimHits_*_*')
-            getattr(process,b).outputCommands.append('keep SimVertexs_g4SimHits_*_*')
+
+            getattr(process,b).outputCommands.append('keep *_TTClustersFromPixelDigis_*_*')
+            getattr(process,b).outputCommands.append('keep *_TTStubsFromPixelDigis_*_*')
+            getattr(process,b).outputCommands.append('keep *_TTTracksFromPixelDigis_*_*')
+
+            getattr(process,b).outputCommands.append('keep *_TTClusterAssociatorFromPixelDigis_*_*')
+            getattr(process,b).outputCommands.append('keep *_TTStubAssociatorFromPixelDigis_*_*')
+            getattr(process,b).outputCommands.append('keep *_TTTrackAssociatorFromPixelDigis_*_*')
+
+            getattr(process,b).outputCommands.append('drop PixelDigiSimLinkedmDetSetVector_mix_*_*')
+            getattr(process,b).outputCommands.append('drop PixelDigiedmDetSetVector_mix_*_*')
+
             getattr(process,b).outputCommands.append('keep *_simSiPixelDigis_*_*')
-            getattr(process,b).outputCommands.append('keep *_genParticles_*_*')
-            getattr(process,b).outputCommands.append('keep *_L1TkBeams_*_*')
-            getattr(process,b).outputCommands.append('keep *_L1TkClustersFromPixelDigis_*_*')
-            getattr(process,b).outputCommands.append('keep *_L1TkClustersFromSimHits_*_*')
-            getattr(process,b).outputCommands.append('keep *_L1TkStubsFromPixelDigis_*_*')
-            getattr(process,b).outputCommands.append('keep *_L1TkStubsFromSimHits_*_*')
-            getattr(process,b).outputCommands.append('keep *_siPixelRecHits_*_*')
-            #drop some bigger collections we don't think we need
-            getattr(process,b).outputCommands.append('drop PSimHits_g4SimHits_EcalHitsEB_*')
-            getattr(process,b).outputCommands.append('drop PSimHits_g4SimHits_EcalHitsEE_*')
-            getattr(process,b).outputCommands.append('drop *_L1TkStubsFromSimHits_StubsFail_*')
+
     return process
 
 def customise_DQM(process,pileup):
@@ -242,7 +243,7 @@ def customise_DQM(process,pileup):
     			    #The following two steps were removed
                             #process.PixelLessStep*
                             #process.TobTecStep*
-    process.dqmoffline_step.remove(process.muonAnalyzer)
+#    process.dqmoffline_step.remove(process.muonAnalyzer)
     process.dqmoffline_step.remove(process.jetMETAnalyzer)
 #    process.dqmoffline_step.remove(process.TrackMonStep9)
 #    process.dqmoffline_step.remove(process.TrackMonStep10)
@@ -270,6 +271,7 @@ def customise_DQM(process,pileup):
 def customise_Validation(process,pileup):
     process.validation_step.remove(process.PixelTrackingRecHitsValid)
     process.validation_step.remove(process.stripRecHitsValid)
+    process.validation_step.remove(process.trackerHitsValid)
     process.validation_step.remove(process.StripTrackingRecHitsValid)
     # We don't run the HLT
     process.validation_step.remove(process.HLTSusyExoVal)
@@ -295,6 +297,9 @@ def customise_Validation(process,pileup):
         process.mix.minBunch = cms.int32(0)
         process.mix.maxBunch = cms.int32(0)
 
+    if hasattr(process,'simHitTPAssocProducer'):    
+        process.simHitTPAssocProducer.simHitSrc=cms.VInputTag(cms.InputTag("g4SimHits","TrackerHitsPixelBarrelLowTof"),
+                                                              cms.InputTag("g4SimHits","TrackerHitsPixelEndcapLowTof"))
     return process
 
 def customise_harvesting(process):
@@ -304,3 +309,37 @@ def customise_harvesting(process):
     process.dqmHarvesting.remove(process.sipixelCertification)
     return (process)
 
+def customise_TrackTrigger(process):
+    process.StackedTrackerGeometryESModule.EndcapCutSet = cms.VPSet(
+        cms.PSet( EndcapCut = cms.vdouble( 0 ) ), #Use 0 as dummy to have direct access using DetId to the correct element
+        cms.PSet( EndcapCut = cms.vdouble( 0, 3, 3, 4, 4, 5, 6, 6, 7, 5, 6, 6, 9, 11, 11 ) ), #D1
+        cms.PSet( EndcapCut = cms.vdouble( 0, 2, 3, 4, 4, 5, 5, 6, 7, 4, 6, 6, 8, 8, 10 ) ), #D2 ...
+        cms.PSet( EndcapCut = cms.vdouble( 0, 2, 2, 3, 4, 4, 5, 6, 6, 4, 4, 6, 6, 8, 9 ) ),
+        cms.PSet( EndcapCut = cms.vdouble( 0, 2, 2, 3, 3, 4, 4, 5, 5, 7, 4, 5, 6, 6, 8 ) ),
+        cms.PSet( EndcapCut = cms.vdouble( 0, 2, 3, 3, 4, 4, 5, 5, 6, 8, 4, 5, 6, 7 ) ),
+        cms.PSet( EndcapCut = cms.vdouble( 0, 3, 3, 3, 4, 4, 5, 6, 7, 4, 5, 6, 6 ) ),
+        cms.PSet( EndcapCut = cms.vdouble( 0, 2, 3, 4, 4, 5, 5, 6, 8, 4, 5, 6 ) ) 
+        # missing rings are not taken into account in numbering, so everything
+        # always starts from 1 to N, with increasing r
+    )
+
+    process.TTStubAlgorithm_tab2013_PixelDigi_.EndcapCutSet = cms.VPSet(
+        cms.PSet( EndcapCut = cms.vdouble( 0 ) ), #Use 0 as dummy to have direct access using DetId to the correct element
+        cms.PSet( EndcapCut = cms.vdouble( 0, 1.5, 1.5, 2.0, 2.0, 2.5, 3.0, 3.0, 3.5, 2.5, 3.0, 3.0, 4.5, 5.5, 5.5 ) ), #D1
+        cms.PSet( EndcapCut = cms.vdouble( 0, 1.5, 1.5, 2.0, 2.0, 2.5, 2.5, 3.0, 3.5, 2.0, 3.0, 3.0, 4.0, 4.0, 5.0 ) ), #D2 ...
+        cms.PSet( EndcapCut = cms.vdouble( 0, 1.5, 1.0, 1.5, 2.0, 2.0, 2.5, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.5 ) ),
+        cms.PSet( EndcapCut = cms.vdouble( 0, 1.5, 1.0, 1.5, 1.5, 2.0, 2.0, 2.5, 2.5, 3.5, 2.0, 2.5, 3.0, 3.0, 4.0 ) ),
+        cms.PSet( EndcapCut = cms.vdouble( 0, 1.5, 1.5, 1.5, 2.0, 2.0, 2.5, 2.5, 3.0, 4.0, 2.0, 2.5, 3.0, 3.5 ) ),
+        cms.PSet( EndcapCut = cms.vdouble( 0, 1.5, 1.5, 1.5, 2.0, 2.0, 2.5, 3.0, 3.5, 2.0, 2.5, 3.0, 3.0 ) ),
+        cms.PSet( EndcapCut = cms.vdouble( 0, 1.5, 1.5, 2.0, 2.0, 2.5, 2.5, 3.0, 4.0, 2.0, 2.5, 3.0 ) ) # missing rings are not taken into account in numbering, so everything
+        # always starts from 1 to N, with increasing r
+        )
+      
+                                                                                                                                        
+    
+#    process.StackedTrackerGeometryESModule.EndcapCutSet.append(process.StackedTrackerGeometryESModule.EndcapCutSet[5])
+#    process.StackedTrackerGeometryESModule.EndcapCutSet.append(process.StackedTrackerGeometryESModule.EndcapCutSet[5])
+#    process.TTStubAlgorithm_tab2013_PixelDigi_.EndcapCutSet.append(process.TTStubAlgorithm_tab2013_PixelDigi_.EndcapCutSet[5])
+#    process.TTStubAlgorithm_tab2013_PixelDigi_.EndcapCutSet.append(process.TTStubAlgorithm_tab2013_PixelDigi_.EndcapCutSet[5])
+    
+    return process

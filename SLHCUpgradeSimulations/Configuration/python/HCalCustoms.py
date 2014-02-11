@@ -5,20 +5,8 @@ def customise_HcalPhase0(process):
 
     if hasattr(process,'mix') and hasattr(process.mix,'digitizers') and hasattr(process.mix.digitizers,'hcal'):    
         process.mix.digitizers.hcal.HcalReLabel.RelabelHits=cms.untracked.bool(True)
-        process.mix.digitizers.hcal.HcalReLabel.RelabelRules.Eta1  = cms.untracked.vint32(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
-        process.mix.digitizers.hcal.HcalReLabel.RelabelRules.Eta16 = cms.untracked.vint32(1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3)
-        process.mix.digitizers.hcal.HcalReLabel.RelabelRules.Eta17 = cms.untracked.vint32(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
-        process.mix.digitizers.hcal.HcalReLabel.RelabelRules.Eta18 = cms.untracked.vint32(1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2)
-        process.mix.digitizers.hcal.HcalReLabel.RelabelRules.Eta19 = cms.untracked.vint32(1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2)
-        process.mix.digitizers.hcal.HcalReLabel.RelabelRules.Eta27 = cms.untracked.vint32(1,1,1,1,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3)	
 	
     process.es_hardcode.HcalReLabel.RelabelHits = cms.untracked.bool(True)
-    process.es_hardcode.HcalReLabel.RelabelRules.Eta1  = cms.untracked.vint32(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
-    process.es_hardcode.HcalReLabel.RelabelRules.Eta16 = cms.untracked.vint32(1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3)
-    process.es_hardcode.HcalReLabel.RelabelRules.Eta17 = cms.untracked.vint32(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
-    process.es_hardcode.HcalReLabel.RelabelRules.Eta18 = cms.untracked.vint32(1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2)
-    process.es_hardcode.HcalReLabel.RelabelRules.Eta19 = cms.untracked.vint32(1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2)
-    process.es_hardcode.HcalReLabel.RelabelRules.Eta27 = cms.untracked.vint32(1,1,1,1,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3)
     process.es_hardcode.HEreCalibCutoff = cms.double(20.) #for aging
 
     process.es_hardcode.toGet = cms.untracked.vstring(
@@ -26,11 +14,10 @@ def customise_HcalPhase0(process):
         'RespCorrs'
         )
 
-
     if hasattr(process,'g4SimHits'):
         process=customise_Sim(process)
     if hasattr(process,'validation_step'):
-        process=customise_Validation(process)
+        process=customise_ValidationPhase0(process)
 		
     return process
 
@@ -58,20 +45,11 @@ def customise_HcalPhase1(process):
                 'CovarianceMatrices'
                 )
     
-    process.es_hardcode.hcalTopologyConstants.mode=cms.string('HcalTopologyMode::SLHC')
-    process.es_hardcode.hcalTopologyConstants.maxDepthHB=cms.int32(3)
-    process.es_hardcode.hcalTopologyConstants.maxDepthHB=cms.int32(3)
-    process.es_hardcode.hcalTopologyConstants.maxDepthHE=cms.int32(5)
     process.es_hardcode.HcalReLabel.RelabelHits=cms.untracked.bool(True)
     # Special Upgrade trick (if absent - regular case assumed)
     process.es_hardcode.GainWidthsForTrigPrims = cms.bool(True)
     process.es_hardcode.HEreCalibCutoff = cms.double(100.) #for aging
     
-    process.hcalTopologyIdeal.hcalTopologyConstants.mode=cms.string('HcalTopologyMode::SLHC')
-    process.hcalTopologyIdeal.hcalTopologyConstants.maxDepthHB=cms.int32(3)
-    process.hcalTopologyIdeal.hcalTopologyConstants.maxDepthHE=cms.int32(5)
-    
-
     if hasattr(process,'g4SimHits'):
         process=customise_Sim(process)
     if hasattr(process,'DigiToRaw'):
@@ -87,7 +65,7 @@ def customise_HcalPhase1(process):
     if hasattr(process,'dqmHarvesting'):
         process=customise_harvesting(process)
     if hasattr(process,'validation_step'):
-        process=customise_Validation(process)
+        process=customise_ValidationPhase1(process)
     process=customise_condOverRides(process)
     return process
 
@@ -117,11 +95,7 @@ def customise_Digi(process):
         process.mix.digitizers.hcal.he.pixels = cms.int32(4500*4*2)
         process.mix.digitizers.hcal.HFUpgradeQIE = True
         process.mix.digitizers.hcal.HcalReLabel.RelabelHits=cms.untracked.bool(True)
-
-    if hasattr(process,'HcalTPGCoderULUT'):
-        process.HcalTPGCoderULUT.hcalTopologyConstants.mode=cms.string('HcalTopologyMode::SLHC')
-        process.HcalTPGCoderULUT.hcalTopologyConstants.maxDepthHB=cms.int32(3)
-        process.HcalTPGCoderULUT.hcalTopologyConstants.maxDepthHE=cms.int32(5)
+        process.mix.digitizers.hcal.doTimeSlew = False 
 
     if hasattr(process,'simHcalDigis'):
         process.simHcalDigis.useConfigZSvalues=cms.int32(1)
@@ -198,6 +172,7 @@ def customise_Reco(process):
     process.horeco.digiLabel = "simHcalDigis" 
     process.hbheUpgradeReco.digiLabel = cms.InputTag("simHcalDigis","HBHEUpgradeDigiCollection")
     process.hfUpgradeReco.digiLabel = cms.InputTag("simHcalDigis","HFUpgradeDigiCollection")
+    process.hbheUpgradeReco.correctForTimeslew = False
 
     process.zdcreco.digiLabel = "simHcalUnsuppressedDigis"
     process.hcalnoise.digiCollName=cms.string('simHcalDigis')
@@ -226,11 +201,22 @@ def customise_DQM(process):
     return process
 
 def customise_harvesting(process):
+    process.hcaldigisClient.doSLHC    = cms.untracked.bool(True)
+    process.hcalrechitsClient.doSLHC  = cms.untracked.bool(True)
     return process
 
-def customise_Validation(process):
-    process.validation_step.remove(process.AllHcalDigisValidation)
-    process.validation_step.remove(process.RecHitsValidation)
+def customise_ValidationPhase0(process):
+#    process.AllHcalDigisValidation.doSLHC = cms.untracked.bool(True)
+    process.AllHcalDigisValidation.digiLabel = cms.InputTag("simHcalDigis")
+    process.validation_step.remove(process.globalhitsanalyze)
+    return process
+
+def customise_ValidationPhase1(process):
+    process.AllHcalDigisValidation.doSLHC = cms.untracked.bool(True)
+    process.AllHcalDigisValidation.digiLabel = cms.InputTag("simHcalDigis")
+    process.RecHitsValidation.doSLHC = cms.untracked.bool(True)
+    process.RecHitsValidation.HBHERecHitCollectionLabel = cms.untracked.InputTag("hbheUpgradeReco")
+    process.RecHitsValidation.HFRecHitCollectionLabel = cms.untracked.InputTag("hfUpgradeReco") 
     process.validation_step.remove(process.globalhitsanalyze)
     return process
 
