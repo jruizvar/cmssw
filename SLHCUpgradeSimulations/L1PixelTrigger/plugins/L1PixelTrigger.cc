@@ -171,6 +171,8 @@ void L1PixelTrigger::InitializeVectors()
             bHit_gx.clear();
             bHit_gy.clear();
             bHit_gz.clear();
+           bHit_eta.clear();
+           bHit_phi.clear();
            bCl_size.clear();
           bCl_sizex.clear();
           bCl_sizey.clear();
