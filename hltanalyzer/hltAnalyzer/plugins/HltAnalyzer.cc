@@ -135,9 +135,6 @@ HltAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
    iEvent.getByLabel(e2_tag_, negEle);
    reco::CandidateView::const_iterator e1=posEle->begin();
    reco::CandidateView::const_iterator e2=negEle->begin();
-   if ( posEle->size() > 1 ) {
-
-   }
    // ------ deltaR and Invariant mass -------//
    const reco::Candidate::LorentzVector & e1p = e1->p4();
    const reco::Candidate::LorentzVector & e2p = e2->p4();
