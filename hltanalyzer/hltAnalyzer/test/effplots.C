@@ -43,7 +43,7 @@ f3->GetObject(Form("demo/eff_%s_HLT_DoubleEle33_CaloIdL_v15;1",plot),e3);
 e1->SetLineColor(4); e1->SetLineWidth(1); e1->SetMarkerStyle(24); e1->SetMarkerSize(0.8); e1->SetMarkerColor(4); 
 e2->SetLineColor(2); e2->SetLineWidth(2); e2->SetMarkerStyle(25); e2->SetMarkerSize(0.8); e2->SetMarkerColor(2);    
 e3->SetLineColor(1); e3->SetLineWidth(2); e3->SetMarkerStyle(26); e3->SetMarkerSize(0.8); e3->SetMarkerColor(1); 
-c2 = new TCanvas("c2","");
+c2 = new TCanvas("c2");
 c2->cd();
 e1->Draw();
 gPad->SetGridx();
