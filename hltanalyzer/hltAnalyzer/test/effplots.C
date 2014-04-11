@@ -1,5 +1,12 @@
 // Usage
-// root -b -q 'effplots.C("eeMass")'
+// root -b -q  'effplots.C("eedR")'
+// root -b -q  'effplots.C("eePt")'
+// root -b -q  'effplots.C("eeEta")'
+// root -b -q  'effplots.C("eeMass")'
+// root -b -q  'effplots.C("e1Pt")'
+// root -b -q  'effplots.C("e1Eta")'
+// root -b -q  'effplots.C("e2Pt")'
+// root -b -q  'effplots.C("e2Eta")'
 //
 void effplots(char* plot)
 {
