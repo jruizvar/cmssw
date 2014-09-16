@@ -58,6 +58,7 @@ namespace edm {
     initialNumberOfEventsToSkip_(inputType == InputType::Primary ? pset.getUntrackedParameter<unsigned int>("skipEvents", 0U) : 0U),
     noEventSort_(inputType == InputType::Primary ? pset.getUntrackedParameter<bool>("noEventSort", true) : false),
     skipBadFiles_(pset.getUntrackedParameter<bool>("skipBadFiles", false)),
+    bypassVersionCheck_(pset.getUntrackedParameter<bool>("bypassVersionCheck", false)),
     treeCacheSize_(noEventSort_ ? pset.getUntrackedParameter<unsigned int>("cacheSize", roottree::defaultCacheSize) : 0U),
     treeMaxVirtualSize_(pset.getUntrackedParameter<int>("treeMaxVirtualSize", -1)),
     setRun_(pset.getUntrackedParameter<unsigned int>("setRunNumber", 0U)),
@@ -266,6 +267,7 @@ namespace edm {
           indexesIntoFiles_,
           currentIndexIntoFile,
           orderedProcessHistoryIDs_,
+          bypassVersionCheck_,
           labelRawDataLikeMC_,
           usingGoToEvent_,
           enablePrefetching_));
@@ -622,7 +624,7 @@ namespace edm {
     skipBadFiles_ = false;
     if(fileIter_ == fileIterEnd_ || !rootFile_) {
       if(fileIterEnd_ == fileIterBegin_) {
-        throw Exception(errors::Configuration) << "RootInputFileSequence::readOneSequential(): no input files specified.\n";
+        throw Exception(errors::Configuration) << "RootInputFileSequence::readOneSequential(): no input files specified for secondary input source.\n";
       }
       fileIter_ = fileIterBegin_;
       initFile(false);
@@ -645,7 +647,7 @@ namespace edm {
   bool
   RootInputFileSequence::readOneSequentialWithID(EventPrincipal& cache, LuminosityBlockID const& id) {
     if(fileIterEnd_ == fileIterBegin_) {
-      throw Exception(errors::Configuration) << "RootInputFileSequence::readOneSequentialWithID(): no input files specified.\n";
+      throw Exception(errors::Configuration) << "RootInputFileSequence::readOneSequentialWithID(): no input files specified for secondary input source.\n";
     }
     skipBadFiles_ = false;
     if(fileIter_ == fileIterEnd_ || !rootFile_ ||
@@ -672,13 +674,15 @@ namespace edm {
 
   void
   RootInputFileSequence::readOneSpecified(EventPrincipal& cache, EventID const& id) {
+    if(fileIterEnd_ == fileIterBegin_) {
+      throw Exception(errors::Configuration) << "RootInputFileSequence::readOneSpecified(): no input files specified for secondary input source.\n";
+    }
     skipBadFiles_ = false;
     bool found = skipToItem(id.run(), id.luminosityBlock(), id.event());
     if(!found) {
-      throw Exception(errors::NotFound) <<
-         "RootInputFileSequence::readOneSpecified(): Secondary Input file " <<
-         fileIter_->fileName() <<
-         " does not contain specified event:\n" << id << "\n";
+       throw Exception(errors::NotFound) <<
+         "RootInputFileSequence::readOneSpecified(): Secondary Input files" <<
+         " do not contain specified event:\n" << id << "\n";
     }
     found = rootFile_->readCurrentEvent(cache);
     assert(found);
@@ -687,7 +691,7 @@ namespace edm {
   void
   RootInputFileSequence::readOneRandom(EventPrincipal& cache) {
     if(fileIterEnd_ == fileIterBegin_) {
-      throw Exception(errors::Configuration) << "RootInputFileSequence::readOneRandom(): no input files specified.\n";
+      throw Exception(errors::Configuration) << "RootInputFileSequence::readOneRandom(): no input files specified for secondary input source.\n";
     }
     if(!flatDistribution_) {
       Service<RandomNumberGenerator> rng;
@@ -726,7 +730,7 @@ namespace edm {
   bool
   RootInputFileSequence::readOneRandomWithID(EventPrincipal& cache, LuminosityBlockID const& id) {
     if(fileIterEnd_ == fileIterBegin_) {
-      throw Exception(errors::Configuration) << "RootInputFileSequence::readOneRandomWithID(): no input files specified.\n";
+      throw Exception(errors::Configuration) << "RootInputFileSequence::readOneRandomWithID(): no input files specified for secondary input source.\n";
     }
     if(!flatDistribution_) {
       Service<RandomNumberGenerator> rng;
@@ -778,6 +782,9 @@ namespace edm {
     desc.addUntracked<bool>("skipBadFiles", false)
         ->setComment("True:  Ignore any missing or unopenable input file.\n"
                      "False: Throw exception if missing or unopenable input file.");
+    desc.addUntracked<bool>("bypassVersionCheck", false)
+        ->setComment("True:  Bypass release version check.\n"
+                     "False: Throw exception if reading file in a release prior to the release in which the file was written.");
     desc.addUntracked<unsigned int>("cacheSize", roottree::defaultCacheSize)
         ->setComment("Size of ROOT TTree prefetch cache.  Affects performance.");
     desc.addUntracked<int>("treeMaxVirtualSize", -1)

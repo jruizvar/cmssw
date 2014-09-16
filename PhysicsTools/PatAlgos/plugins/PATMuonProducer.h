@@ -65,7 +65,7 @@ namespace pat {
     void fillMuon( Muon& aMuon, const MuonBaseRef& muonRef, const reco::CandidateBaseRef& baseRef, const GenAssociations& genMatches, const IsoDepositMaps& deposits, const IsolationValueMaps& isolationValues) const;
     /// fill label vector from the contents of the parameter set,
     /// for the embedding of isoDeposits or userIsolation values
-    template<typename T> void readIsolationLabels( const edm::ParameterSet & iConfig, const char* psetName, IsolationLabels& labels, std::vector<edm::EDGetTokenT<edm::ValueMap<T> > > tokens);
+    template<typename T> void readIsolationLabels( const edm::ParameterSet & iConfig, const char* psetName, IsolationLabels& labels, std::vector<edm::EDGetTokenT<edm::ValueMap<T> > > & tokens);
 
 
     // embed various impact parameters with errors
@@ -83,8 +83,12 @@ namespace pat {
     /// input source
     edm::EDGetTokenT<edm::View<reco::Muon> > muonToken_;
 
-    /// embed the track from best muon measurement
+    /// embed the track from best muon measurement (global pflow)
     bool embedBestTrack_;
+    /// embed the track from best muon measurement (muon only)
+    bool embedTunePBestTrack_;
+    /// force separate embed of the best track even if already embedded 
+    bool forceEmbedBestTrack_;
     /// embed the track from inner tracker into the muon
     bool embedTrack_;
     /// embed track from muon system into the muon
@@ -160,7 +164,7 @@ using namespace pat;
 
 
 template<typename T>
-void PATMuonProducer::readIsolationLabels( const edm::ParameterSet & iConfig, const char* psetName, IsolationLabels& labels, std::vector<edm::EDGetTokenT<edm::ValueMap<T> > > tokens)
+void PATMuonProducer::readIsolationLabels( const edm::ParameterSet & iConfig, const char* psetName, IsolationLabels& labels, std::vector<edm::EDGetTokenT<edm::ValueMap<T> > > & tokens)
 {
   labels.clear();
 
