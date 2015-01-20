@@ -72,7 +72,7 @@ def miniAOD_customizeCommon(process):
     switchJetCollection(process, jetSource = cms.InputTag('ak4PFJetsCHS'),  
     jetCorrections = ('AK4PFchs', cms.vstring(['L1FastJet', 'L2Relative', 'L3Absolute']), ''),
     btagDiscriminators = ['jetBProbabilityBJetTags', 'jetProbabilityBJetTags', 'trackCountingHighPurBJetTags', 'trackCountingHighEffBJetTags', 'simpleSecondaryVertexHighEffBJetTags',
-                         'simpleSecondaryVertexHighPurBJetTags', 'combinedSecondaryVertexBJetTags' , 'combinedInclusiveSecondaryVertexBJetTags' ],
+                         'simpleSecondaryVertexHighPurBJetTags', 'combinedSecondaryVertexBJetTags' , 'combinedInclusiveSecondaryVertexBJetTags','combinedMVABJetTags' ],
     )
     #add AK8   
     from PhysicsTools.PatAlgos.tools.jetTools import addJetCollection
@@ -101,19 +101,6 @@ def miniAOD_customizeCommon(process):
     process.cmsTopTagPFJetsCHSLinksAK8.src = cms.InputTag("ak8PFJetsCHS")
     process.cmsTopTagPFJetsCHSLinksAK8.matched = cms.InputTag("cmsTopTagPFJetsCHS")
     process.patJetsAK8.userData.userFloats.src += ['cmsTopTagPFJetsCHSLinksAK8']
-
-    #QJetsAdder
-    if hasattr(process,"RandomNumberGeneratorService") :
-	    process.RandomNumberGeneratorService.QJetsAdderAK8 = cms.PSet(initialSeed = cms.untracked.uint32(7))
-	    process.RandomNumberGeneratorService.QJetsAdder = cms.PSet(initialSeed = cms.untracked.uint32(7))
-    else:
-	    process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService", QJetsAdderAK8 = cms.PSet(initialSeed = cms.untracked.uint32(7)), QJetsAdder = cms.PSet(initialSeed = cms.untracked.uint32(7)))
-    process.load('RecoJets.JetProducers.qjetsadder_cfi')
-    process.QJetsAdderAK8 = process.QJetsAdder.clone()
-    process.QJetsAdderAK8.src = cms.InputTag("ak8PFJetsCHS")
-    process.QJetsAdderAK8.jetRad = cms.double(0.8)
-    process.QJetsAdderAK8.jetAlgo = cms.string('AK')
-    process.patJetsAK8.userData.userFloats.src += ['QJetsAdderAK8:QjetsVolatility']
 
     # add Njetiness
     process.load('RecoJets.JetProducers.nJettinessAdder_cfi')
