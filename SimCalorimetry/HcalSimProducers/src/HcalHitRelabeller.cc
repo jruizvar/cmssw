@@ -21,15 +21,6 @@ void HcalHitRelabeller::process(std::vector<PCaloHit>& hcalHits) {
       DetId newid = relabel(hcalHits[ii].id());
 #ifdef DebugLog
       std::cout << "Hit " << ii << " out of " << hcalHits.size() << " " << std::hex << newid.rawId() << std::dec << '\n';
-//      HcalDetId newcell(newid);
-//      if (theGeometry) {
-//	const CaloCellGeometry *cellGeometry =
-//	  theGeometry->getSubdetectorGeometry(newcell)->getGeometry(newcell);
-//	GlobalPoint globalposition =(GlobalPoint)(cellGeometry->getPosition());
-//	std::cout << "PCaloHit " << newcell << " position: " << globalposition 
-//		  << std::endl;
-//      }
-//      std::cout.flush();
 #endif
       hcalHits[ii].setID(newid.rawId());
 #ifdef DebugLog
@@ -57,25 +48,24 @@ DetId HcalHitRelabeller::relabel(const uint32_t testId) const {
   HcalDetId hid;
   int       det, z, depth, eta, phi, layer, sign;
   HcalTestNumbering::unpackHcalIndex(testId,det,z,depth,eta,phi,layer);
-  HcalDDDRecConstants::HcalID id = theRecNumber->getHCID(det,eta,phi,layer,depth);
-  sign=(z==0)?(-1):(1);
 #ifdef DebugLog
   std::cout << "det: " << det << " "
   	    << "z: " << z << " "
    	    << "depth: " << depth << " "
    	    << "ieta: " << eta << " "
    	    << "iphi: " << phi << " "
-   	    << "layer: " << layer << " ";
-  std::cout.flush();
+   	    << "layer: " << layer << std::endl;
 #endif
+  HcalDDDRecConstants::HcalID id = theRecNumber->getHCID(det,eta,phi,layer,depth);
+  sign=(z==0)?(-1):(1);
 
-  if (det==int(HcalBarrel)) {
+  if (id.subdet==int(HcalBarrel)) {
     hid=HcalDetId(HcalBarrel,sign*id.eta,id.phi,id.depth);        
-  } else if (det==int(HcalEndcap)) {
+  } else if (id.subdet==int(HcalEndcap)) {
     hid=HcalDetId(HcalEndcap,sign*id.eta,id.phi,id.depth);    
-  } else if (det==int(HcalOuter)) {
+  } else if (id.subdet==int(HcalOuter)) {
     hid=HcalDetId(HcalOuter,sign*id.eta,id.phi,id.depth);    
-  } else if (det==int(HcalForward)) {
+  } else if (id.subdet==int(HcalForward)) {
     hid=HcalDetId(HcalForward,sign*id.eta,id.phi,id.depth);
   }
 #ifdef DebugLog

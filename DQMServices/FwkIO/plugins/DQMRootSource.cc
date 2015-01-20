@@ -41,12 +41,16 @@
 
 #include "FWCore/Framework/interface/Run.h"
 #include "FWCore/Framework/interface/LuminosityBlock.h"
+#include "DataFormats/Provenance/interface/LuminosityBlockID.h"
+#include "DataFormats/Provenance/interface/LuminosityBlockRange.h"
 
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 
 #include "FWCore/Framework/interface/InputSourceMacros.h"
 #include "FWCore/Framework/interface/FileBlock.h"
+#include "DataFormats/Provenance/interface/EventRange.h"
+#include "DataFormats/Provenance/interface/EventID.h"
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/Utilities/interface/TimeOfDay.h"
@@ -83,10 +87,18 @@ namespace {
           iOriginal->GetYaxis()->GetXmax() == iToAdd->GetYaxis()->GetXmax() &&
           iOriginal->GetNbinsZ() == iToAdd->GetNbinsZ() &&
           iOriginal->GetZaxis()->GetXmin() == iToAdd->GetZaxis()->GetXmin() &&
-          iOriginal->GetZaxis()->GetXmax() == iToAdd->GetZaxis()->GetXmax()) {
-        iOriginal->Add(iToAdd);
+          iOriginal->GetZaxis()->GetXmax() == iToAdd->GetZaxis()->GetXmax() &&
+	  // Also check that the min is less than the max. Root allows this to be booked but then
+	  // crashes when it adds them.
+          iOriginal->GetXaxis()->GetXmin() < iToAdd->GetXaxis()->GetXmax() &&
+          iOriginal->GetYaxis()->GetXmin() < iToAdd->GetYaxis()->GetXmax() &&
+          iOriginal->GetZaxis()->GetXmin() < iToAdd->GetZaxis()->GetXmax() &&
+	  MonitorElement::CheckBinLabels(iOriginal->GetXaxis(),iToAdd->GetXaxis()) &&
+	  MonitorElement::CheckBinLabels(iOriginal->GetYaxis(),iToAdd->GetYaxis()) &&
+	  MonitorElement::CheckBinLabels(iOriginal->GetZaxis(),iToAdd->GetZaxis())) {
+	iOriginal->Add(iToAdd);
       } else {
-        edm::LogError("MergeFailure")<<"Found histograms with different axis limits '"<<iOriginal->GetName()<<"' not merged.";
+        edm::LogError("MergeFailure")<<"Found histograms with different or invalid axis limits or different labels'"<<iOriginal->GetName()<<"' not merged.";
       }
     } 
   }
@@ -154,13 +166,14 @@ namespace {
     const std::string& name = iElement->getFullname();
     if(name.find("EventInfo/processedEvents") != std::string::npos) {
       iElement->Fill(iValue+iElement->getIntValue());
-    } else {
-      if(name.find("EventInfo/iEvent") != std::string::npos ||
+    } else if(name.find("EventInfo/iEvent") != std::string::npos ||
          name.find("EventInfo/iLumiSection") != std::string::npos) {
         if(iValue > iElement->getIntValue()) {
           iElement->Fill(iValue);
         }
-      }
+    }
+    else {
+      iElement->Fill(iValue);
     }
   }
 
@@ -170,13 +183,15 @@ namespace {
     return e;
   }
   void mergeWithElement(MonitorElement* iElement, double& iValue) {
-    //no merging
+    //no merging, take the last one
+    iElement->Fill(iValue);
   }
   MonitorElement* createElement(DQMStore& iStore, const char* iName, std::string* iValue) {
     return iStore.bookString(iName,*iValue);
   }
-  void mergeWithElement(MonitorElement* , std::string* ) {
-    //no merging
+  void mergeWithElement(MonitorElement* iElement, std::string* iValue) {
+    //no merging, take the last one
+    iElement->Fill(*iValue);
   }
 
   void splitName(const std::string& iFullName, std::string& oPath,const char*& oName) {
@@ -253,7 +268,7 @@ namespace {
   template<class T>
     class TreeSimpleReader : public TreeReaderBase {
       public:
-        TreeSimpleReader():m_tree(0),m_fullName(0),m_buffer(),m_tag(0){
+        TreeSimpleReader():m_tree(0),m_fullName(0),m_buffer(0),m_tag(0){
         }
         virtual MonitorElement* doRead(ULong64_t iIndex, DQMStore& iStore,bool iIsLumi) {
           m_tree->GetEntry(iIndex);
@@ -359,8 +374,9 @@ class DQMRootSource : public edm::InputSource
       void logFileAction(char const* msg, char const* fileName) const;
       
       void readNextItemType();
-      void setupFile(unsigned int iIndex);
+      bool setupFile(unsigned int iIndex);
       void readElements();
+      bool skipIt(edm::RunNumber_t, edm::LuminosityBlockNumber_t) const;
       
       const DQMRootSource& operator=(const DQMRootSource&); // stop default
 
@@ -386,6 +402,10 @@ class DQMRootSource : public edm::InputSource
       unsigned int m_lastSeenRun2;
       unsigned int m_lastSeenLumi2;
       unsigned int m_filterOnRun;
+      bool m_skipBadFiles;
+      std::vector<edm::LuminosityBlockRange> m_lumisToProcess;
+      std::vector<edm::RunNumber_t> m_runsToProcess;
+ 
       bool m_justOpenedFileSoNeedToGenerateRunTransition;
       bool m_shouldReadMEs;
       std::set<MonitorElement*> m_lumiElements;
@@ -411,8 +431,14 @@ DQMRootSource::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     ->setComment("Names of files to be processed.");
   desc.addUntracked<unsigned int>("filterOnRun",0)
     ->setComment("Just limit the process to the selected run.");
+  desc.addUntracked<bool>("skipBadFiles",false)
+    ->setComment("Skip the file if it is not valid");
   desc.addUntracked<std::string>("overrideCatalog",std::string())
     ->setComment("An alternate file catalog to use instead of the standard site one.");
+  std::vector<edm::LuminosityBlockRange> defaultLumis;
+  desc.addUntracked<std::vector<edm::LuminosityBlockRange> >("lumisToProcess",defaultLumis)
+    ->setComment("Skip any lumi inside the specified run:lumi range.");
+
   descriptions.addDefault(desc);
 }
 //
@@ -433,9 +459,15 @@ DQMRootSource::DQMRootSource(edm::ParameterSet const& iPSet, const edm::InputSou
   m_lastSeenRun2(0),
   m_lastSeenLumi2(0),
   m_filterOnRun(iPSet.getUntrackedParameter<unsigned int>("filterOnRun", 0)),
+  m_skipBadFiles(iPSet.getUntrackedParameter<bool>("skipBadFiles", false)),
+  m_lumisToProcess(iPSet.getUntrackedParameter<std::vector<edm::LuminosityBlockRange> >("lumisToProcess",std::vector<edm::LuminosityBlockRange>())),
   m_justOpenedFileSoNeedToGenerateRunTransition(false),
   m_shouldReadMEs(true)
 {
+  edm::sortAndRemoveOverlaps(m_lumisToProcess);
+  for(std::vector<edm::LuminosityBlockRange>::const_iterator itr = m_lumisToProcess.begin(); itr!=m_lumisToProcess.end(); ++itr)
+    m_runsToProcess.push_back(itr->startRun());
+  
   if(m_fileIndex ==m_catalog.fileNames().size()) {
     m_nextItemType=edm::InputSource::IsStop;
   } else{
@@ -452,7 +484,6 @@ DQMRootSource::DQMRootSource(edm::ParameterSet const& iPSet, const edm::InputSou
     m_treeReaders[kTProfileIndex].reset(new TreeObjectReader<TProfile>());
     m_treeReaders[kTProfile2DIndex].reset(new TreeObjectReader<TProfile2D>());
   }
-
 }
 
 // DQMRootSource::DQMRootSource(const DQMRootSource& rhs)
@@ -485,6 +516,7 @@ DQMRootSource::~DQMRootSource()
 //
 edm::EventPrincipal* DQMRootSource::readEvent_(edm::EventPrincipal&)
 {
+  //std::cout << "readEvent_" << std::endl;
   return 0;
 }
 
@@ -521,7 +553,7 @@ DQMRootSource::readLuminosityBlockAuxiliary_()
   assert(m_historyIDs.size() > runLumiRange.m_historyIDIndex);
   //std::cout <<"lumi "<<m_lumiAux.beginTime().value()<<" "<<runLumiRange.m_beginTime<<std::endl;
   m_lumiAux.setProcessHistoryID(m_historyIDs[runLumiRange.m_historyIDIndex]);    
-  
+
   return boost::shared_ptr<edm::LuminosityBlockAuxiliary>(new edm::LuminosityBlockAuxiliary(m_lumiAux));
 }
 
@@ -592,25 +624,24 @@ DQMRootSource::readLuminosityBlock_( boost::shared_ptr<edm::LuminosityBlockPrinc
 
   //NOTE: need to reset all lumi block elements at this point
   if( ( m_lastSeenLumi2 != runLumiRange.m_lumi ||
-        m_lastSeenRun2 != runLumiRange.m_run ||
-        m_lastSeenReducedPHID2 != m_reducedHistoryIDs.at(runLumiRange.m_historyIDIndex) )
+	m_lastSeenRun2 != runLumiRange.m_run ||
+	m_lastSeenReducedPHID2 != m_reducedHistoryIDs.at(runLumiRange.m_historyIDIndex) ) 
       && m_shouldReadMEs) {
-
+    
     edm::Service<DQMStore> store;
     std::vector<MonitorElement*> allMEs = (*store).getAllContents("");
     for(auto const& ME : allMEs) {
       // We do not want to reset Run Products here!
       if (ME->getLumiFlag()) {
-        ME->Reset();
+	ME->Reset();
       }
     }
     m_lastSeenReducedPHID2 = m_reducedHistoryIDs.at(runLumiRange.m_historyIDIndex);
     m_lastSeenRun2 = runLumiRange.m_run;
     m_lastSeenLumi2 = runLumiRange.m_lumi;
   }
+  
   readNextItemType();
-  //std::cout <<"readLuminosityBlock_"<<std::endl;
-
   readElements();
 
   edm::Service<edm::JobReport> jr;
@@ -623,9 +654,20 @@ DQMRootSource::readLuminosityBlock_( boost::shared_ptr<edm::LuminosityBlockPrinc
 std::unique_ptr<edm::FileBlock>
 DQMRootSource::readFile_() {
   //std::cout <<"readFile_"<<std::endl;
-  setupFile(m_fileIndex);
-  ++m_fileIndex;
+
+
+  auto const numFiles = m_catalog.fileNames().size();
+  while(m_fileIndex < numFiles && not setupFile(m_fileIndex++)) {}
+
+  if(m_file.get() == nullptr) {
+    //last file in list was bad
+    m_nextItemType = edm::InputSource::IsStop;
+    return std::unique_ptr<edm::FileBlock>(new edm::FileBlock);
+  }
+
   readNextItemType();
+  while (m_presentIndexItr != m_orderedIndices.end() && skipIt(m_runlumiToRange[*m_presentIndexItr].m_run,m_runlumiToRange[*m_presentIndexItr].m_lumi))
+    ++m_presentIndexItr;
 
   edm::Service<edm::JobReport> jr;
   m_jrToken = jr->inputFileOpened(m_catalog.fileNames()[m_fileIndex-1],
@@ -643,6 +685,7 @@ DQMRootSource::readFile_() {
 
 void
 DQMRootSource::closeFile_() {
+  if(m_file.get()==nullptr) { return; }
   edm::Service<edm::JobReport> jr;
   jr->inputFileClosed(m_jrToken);
 }
@@ -655,6 +698,9 @@ void DQMRootSource::readElements() {
   {
     shouldContinue = false;
     ++m_presentIndexItr;
+    while (m_presentIndexItr != m_orderedIndices.end() && skipIt(m_runlumiToRange[*m_presentIndexItr].m_run,m_runlumiToRange[*m_presentIndexItr].m_lumi))
+      ++m_presentIndexItr;
+    
     if(runLumiRange.m_type == kNoTypesStored) {continue;}
     boost::shared_ptr<TreeReaderBase> reader = m_treeReaders[runLumiRange.m_type];
     ULong64_t index = runLumiRange.m_firstIndex;
@@ -716,6 +762,11 @@ void DQMRootSource::readNextItemType()
   do
   {
     shouldContinue = false;
+    while (m_nextIndexItr != m_orderedIndices.end() && skipIt(m_runlumiToRange[*m_nextIndexItr].m_run,m_runlumiToRange[*m_nextIndexItr].m_lumi))
+      {	
+	++m_nextIndexItr;
+      }
+
     if (m_nextIndexItr == m_orderedIndices.end())
     {
       //go to next file
@@ -733,7 +784,7 @@ void DQMRootSource::readNextItemType()
          (nextRunLumiRange.m_lumi == runLumiRange.m_lumi) ) {
       shouldContinue= true;
       ++m_nextIndexItr;
-      //std::cout <<"  advancing " <<nextRunLumiRange.m_run<<" "<<nextRunLumiRange.m_lumi<<std::endl;
+      //std::cout <<"advancing " <<nextRunLumiRange.m_run<<" "<<nextRunLumiRange.m_lumi<<std::endl;
     } 
   } while(shouldContinue);
   
@@ -748,7 +799,7 @@ void DQMRootSource::readNextItemType()
   }
 }
 
-void 
+bool
 DQMRootSource::setupFile(unsigned int iIndex)
 {
   if(m_file.get() != 0 && iIndex > 0) {
@@ -757,37 +808,49 @@ DQMRootSource::setupFile(unsigned int iIndex)
   }
   logFileAction("  Initiating request to open file ", m_catalog.fileNames()[iIndex].c_str());
   m_presentlyOpenFileIndex = iIndex;
+  m_file.reset();
+  std::auto_ptr<TFile> newFile;
   try {
-    m_file = std::auto_ptr<TFile>(TFile::Open(m_catalog.fileNames()[iIndex].c_str()));
+    newFile = std::auto_ptr<TFile>(TFile::Open(m_catalog.fileNames()[iIndex].c_str()));
   } catch(cms::Exception const& e) {
-    edm::Exception ex(edm::errors::FileOpenError,"",e);
-    ex.addContext("Opening DQM Root file");
-    ex <<"\nInput file " << m_catalog.fileNames()[iIndex] << " was not found, could not be opened, or is corrupted.\n";
-    throw ex;
+    if(!m_skipBadFiles) {
+      edm::Exception ex(edm::errors::FileOpenError,"",e);
+      ex.addContext("Opening DQM Root file");
+      ex <<"\nInput file " << m_catalog.fileNames()[iIndex] << " was not found, could not be opened, or is corrupted.\n";
+      throw ex;
+    }
+    return 0;
   }
-  if(not m_file->IsZombie()) {  
+  if(not newFile->IsZombie()) {  
     logFileAction("  Successfully opened file ", m_catalog.fileNames()[iIndex].c_str());
   } else {
-    edm::Exception ex(edm::errors::FileOpenError);
-    ex<<"Input file "<<m_catalog.fileNames()[iIndex].c_str() <<" could not be opened.\n";
-    ex.addContext("Opening DQM Root file");
-    throw ex;
+    if(!m_skipBadFiles) {
+      edm::Exception ex(edm::errors::FileOpenError);
+      ex<<"Input file "<<m_catalog.fileNames()[iIndex].c_str() <<" could not be opened.\n";
+      ex.addContext("Opening DQM Root file");
+      throw ex;
+    }
+    return 0;
   }
   //Check file format version, which is encoded in the Title of the TFile
-  if(0 != strcmp(m_file->GetTitle(),"1")) {
+  if(0 != strcmp(newFile->GetTitle(),"1")) {
     edm::Exception ex(edm::errors::FileReadError);
     ex<<"Input file "<<m_catalog.fileNames()[iIndex].c_str() <<" does not appear to be a DQM Root file.\n";
   }
   
   //Get meta Data
-  TDirectory* metaDir = m_file->GetDirectory(kMetaDataDirectoryAbsolute);
+  TDirectory* metaDir = newFile->GetDirectory(kMetaDataDirectoryAbsolute);
   if(0==metaDir) {
-    edm::Exception ex(edm::errors::FileReadError);
-    ex<<"Input file "<<m_catalog.fileNames()[iIndex].c_str() <<" appears to be corrupted since it does not have the proper internal structure.\n"
-      " Check to see if the file was closed properly.\n";    
-    ex.addContext("Opening DQM Root file");
-    throw ex;    
+    if(!m_skipBadFiles) {
+      edm::Exception ex(edm::errors::FileReadError);
+      ex<<"Input file "<<m_catalog.fileNames()[iIndex].c_str() <<" appears to be corrupted since it does not have the proper internal structure.\n"
+	" Check to see if the file was closed properly.\n";    
+      ex.addContext("Opening DQM Root file");
+      throw ex;    
+    }
+    else {return 0;}
   }
+  m_file = newFile; //passed all tests so now we want to use this file
   TTree* parameterSetTree = dynamic_cast<TTree*>(metaDir->Get(kParameterSetTree));
   assert(0!=parameterSetTree);
 
@@ -896,12 +959,12 @@ DQMRootSource::setupFile(unsigned int iIndex)
   {
     indicesTree->GetEntry(index);
 //     std::cout <<"read r:"<<temp.m_run
-//            <<" l:"<<temp.m_lumi
-//            <<" b:"<<temp.m_beginTime
-//            <<" e:"<<temp.m_endTime
-//            <<" fi:" << temp.m_firstIndex
-//            <<" li:" << temp.m_lastIndex
-//            <<" type:" << temp.m_type << std::endl;
+// 	      <<" l:"<<temp.m_lumi
+// 	      <<" b:"<<temp.m_beginTime
+// 	      <<" e:"<<temp.m_endTime
+// 	      <<" fi:" << temp.m_firstIndex
+// 	      <<" li:" << temp.m_lastIndex
+// 	      <<" type:" << temp.m_type << std::endl;
     m_runlumiToRange.push_back(temp);
 
     RunLumiPHIDKey runLumi(m_reducedHistoryIDs.at(temp.m_historyIDIndex), temp.m_run, temp.m_lumi);
@@ -979,7 +1042,24 @@ DQMRootSource::setupFile(unsigned int iIndex)
   }
   //After a file open, the framework expects to see a new 'IsRun'
   m_justOpenedFileSoNeedToGenerateRunTransition=true;
+
+  return 1;
 }
+
+bool
+DQMRootSource::skipIt(edm::RunNumber_t run, edm::LuminosityBlockNumber_t lumi) const {
+  if(!m_runsToProcess.empty() && edm::search_all(m_runsToProcess, run) && lumi==0) {
+    return false;
+  }
+  edm::LuminosityBlockID lumiID = edm::LuminosityBlockID(run, lumi);
+  edm::LuminosityBlockRange lumiRange = edm::LuminosityBlockRange(lumiID, lumiID);
+  bool(*lt)(edm::LuminosityBlockRange const&, edm::LuminosityBlockRange const&) = &edm::lessThan;
+  if(!m_lumisToProcess.empty() && !binary_search_all(m_lumisToProcess, lumiRange, lt)) {
+    return true;
+  }
+  return false;
+}
+
 
 void
 DQMRootSource::logFileAction(char const* msg, char const* fileName) const {

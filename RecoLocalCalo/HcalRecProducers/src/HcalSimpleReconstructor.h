@@ -44,11 +44,13 @@ class HcalTopology;
       int firstSample_;
       int samplesToAdd_;
       bool tsFromDB_;
+      double firstDepthWeight_;
       bool upgradeHBHE_;
       bool upgradeHF_;
 
       HcalRecoParams* paramTS;  // firstSample & sampleToAdd from DB  
       HcalTopology *theTopology;
+      int puCorrMethod_;
     };
 
 #endif

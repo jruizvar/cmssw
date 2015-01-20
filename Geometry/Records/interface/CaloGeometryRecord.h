@@ -18,6 +18,8 @@
 #include "Geometry/Records/interface/EcalPreshowerGeometryRecord.h"
 #include "Geometry/Records/interface/HcalGeometryRecord.h"
 #include "Geometry/Records/interface/HcalRecNumberingRecord.h"
+#include "Geometry/Records/interface/ShashlikNumberingRecord.h"
+#include "Geometry/Records/interface/ShashlikGeometryRecord.h"
 #include "Geometry/Records/interface/CaloTowerGeometryRecord.h"
 #include "Geometry/Records/interface/ZDCGeometryRecord.h"
 #include "Geometry/Records/interface/CastorGeometryRecord.h"
@@ -34,6 +36,8 @@ class CaloGeometryRecord :
 		EcalPreshowerGeometryRecord,
 		HcalGeometryRecord,
                 HcalRecNumberingRecord,
+                ShashlikNumberingRecord,
+                ShashlikGeometryRecord,
 		CaloTowerGeometryRecord,
 		CastorGeometryRecord,
 		ZDCGeometryRecord> > {};

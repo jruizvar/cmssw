@@ -12,10 +12,14 @@
 #include <boost/serialization/map.hpp>
 #include "GradedPattern.h"
 
+#ifdef IPNL_USE_CUDA
+#include "gpu_struct.h"
+#endif
+
 using namespace std;
 
 /**
-   \brief A PatternTrunk can contain one low definition pattern and all the associated full definitions patterns
+   \brief A PatternTrunk can contain one low definition pattern and all the associated full definitions patterns (all high definition patterns contnained have the same low resolution version). Used to store patterns and compute variable resolution patterns : we keep the low resolution versions and compute the DC bits values from the high resolution patterns.
 **/
 
 class PatternTrunk{
@@ -79,6 +83,19 @@ class PatternTrunk{
   **/  
   void link(Detector& d, const vector< vector<int> >& sec, const vector<map<int, vector<int> > >& modules);
 
+#ifdef IPNL_USE_CUDA
+ /**
+     \brief Link the low definition patterns to the detector structure
+     \param p the pattern bank structure on the device
+     \param d The detector structure on the device
+     \param pattern_index The index of the pattern in the bank
+     \param sec The ladders in the sector
+     \param modules The modules in the sector (one vector per ladder)
+     \param layers List of layers IDs
+  **/  
+  void linkCuda(patternBank* p, deviceDetector* d, int pattern_index, const vector< vector<int> >& sec, const vector<map<int, vector<int> > >& modules, vector<int> layers, unsigned int* cache);
+#endif
+
   /**
      \brief Change the DC bits of the LDP to take the parameter's DC bits into account (used while merging banks)
      \param p A new pattern
@@ -91,6 +108,13 @@ class PatternTrunk{
      \return A pointer on the copy
   **/
   GradedPattern* getActivePattern(int active_threshold);
+
+  /**
+     \brief Check if the high resolution pattern is already in the bank when DC bits are activated
+     \param hp The attern to check
+     \result True if the pattern is already in tha bank, false otherwise
+   **/
+  bool checkPattern(Pattern* hp);
 
  private:
   GradedPattern* lowDefPattern;
@@ -123,12 +147,14 @@ class PatternTrunk{
   friend class boost::serialization::access;
   
   template<class Archive> void save(Archive & ar, const unsigned int version) const{
-    ar << lowDefPattern;;
+    ar << lowDefPattern;
     ar << fullDefPatterns;
   }
   
   template<class Archive> void load(Archive & ar, const unsigned int version){
-    ar >> lowDefPattern;;
+    if(lowDefPattern!=NULL)
+      delete lowDefPattern;
+    ar >> lowDefPattern;
     ar >> fullDefPatterns;
   }
   

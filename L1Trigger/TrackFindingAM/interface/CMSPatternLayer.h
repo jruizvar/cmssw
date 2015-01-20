@@ -9,11 +9,23 @@
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/export.hpp>
 
+#ifdef IPNL_USE_CUDA
+#include "gpu_struct.h"
+#endif
+
 using namespace std;
 
 
 /**
-   \brief First version of a CMS pattern structure
+   \brief First version of a CMS pattern structure (16 bits are used)
+   Also contains all the detector geometry :
+     - ids of layers
+     - number of ladders per layer
+     - number of modules per ladder
+     - number of strips per segment
+     - convertion from root file module ID to program module ID
+     - convertion from root file ladder ID to program ladder ID
+   Please keep in mind tha the value 15 for the ladder is used for the fake stubs.
 **/
 
 class CMSPatternLayer : public PatternLayer{
@@ -46,6 +58,7 @@ class CMSPatternLayer : public PatternLayer{
   CMSPatternLayer();
   CMSPatternLayer* clone();
   vector<SuperStrip*> getSuperStrip(int l, const vector<int>& ladd, const map<int, vector<int> >& modules, Detector& d);
+  void getSuperStripCuda(int l, const vector<int>& ladd, const map<int, vector<int> >& modules, int layerID, unsigned int* v);
   
   /**
      \brief Set the values in the patternLayer
@@ -60,6 +73,13 @@ class CMSPatternLayer : public PatternLayer{
      \return A string describing the PatternLayer
   **/
   string toString();
+
+  /**
+     \brief Returns a string representation of the PatternLayer, using binary values
+     \return A string describing the PatternLayer
+  **/
+  string toStringBinary();
+
   /**
      \brief Returns the module's Z position
      \return The module's Z position

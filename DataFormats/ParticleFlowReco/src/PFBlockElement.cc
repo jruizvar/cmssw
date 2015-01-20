@@ -5,6 +5,14 @@
 #include "DataFormats/ParticleFlowReco/interface/PFBlockElementCluster.h"
 #include "DataFormats/ParticleFlowReco/interface/PFBlockElementSuperCluster.h"
 
+const reco::TrackRef reco::PFBlockElement::nullTrack_ = reco::TrackRef();
+const reco::PFRecTrackRef reco::PFBlockElement::nullPFRecTrack_ = reco::PFRecTrackRef();
+const reco::PFClusterRef reco::PFBlockElement::nullPFCluster_ = reco::PFClusterRef();
+const reco::PFDisplacedTrackerVertexRef reco::PFBlockElement::nullPFDispVertex_ = 
+  reco::PFDisplacedTrackerVertexRef();
+const reco::ConversionRefVector reco::PFBlockElement::nullConv_ = reco::ConversionRefVector();
+const reco::MuonRef  reco::PFBlockElement::nullMuon_ = reco::MuonRef();
+const reco::VertexCompositeCandidateRef reco::PFBlockElement::nullVertex_ = reco::VertexCompositeCandidateRef();
 
 using namespace reco;
 
@@ -46,7 +54,10 @@ std::ostream& reco::operator<<( std::ostream& out,
     case PFBlockElement::HFEM:
     case PFBlockElement::HFHAD:
     case PFBlockElement::PS1:
-    case PFBlockElement::PS2:    
+    case PFBlockElement::PS2:
+    case PFBlockElement::HGC_ECAL:
+    case PFBlockElement::HGC_HCALF:
+    case PFBlockElement::HGC_HCALB:
       {
         const reco::PFBlockElementCluster& ec =
           dynamic_cast<const reco::PFBlockElementCluster &>( element );

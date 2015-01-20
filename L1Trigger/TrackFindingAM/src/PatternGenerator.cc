@@ -43,6 +43,10 @@ void PatternGenerator::setLayers(vector<int> l){
   sort(tracker_layers.begin(),tracker_layers.end());
 }
 
+void PatternGenerator::setInactiveLayers(vector<int> l){
+  inactive_layers = l;
+}
+
 void PatternGenerator::setParticuleDirName(string f){
   particuleDirName = f;
 }
@@ -61,7 +65,7 @@ TChain* PatternGenerator::createTChain(string directoryName, string tchainName){
 
   cout<<"Loading files from "<<directoryName<<" (this may take several minutes)..."<<endl;
 
-  TChain* TT = new TChain("L1TrackTrigger");
+  TChain* TT = new TChain("BankStubs");
 
   TSystemDirectory dir(directoryName.c_str(), directoryName.c_str());
   TList *files = dir.GetListOfFiles();
@@ -92,26 +96,22 @@ TChain* PatternGenerator::createTChain(string directoryName, string tchainName){
     in.close();
   }
 
-  //  p_m_stub_tp = &m_stub_tp; 
-  p_m_stub_layer = &m_stub_layer; 
-  p_m_stub_module = &m_stub_module;
-  p_m_stub_ladder = &m_stub_ladder;
-  p_m_stub_seg = &m_stub_seg;  
+  p_m_stub_modid = &m_stub_modid; 
   p_m_stub_strip = &m_stub_strip;
-  p_m_stub_pxGEN = &m_stub_pxGEN;  
-  p_m_stub_pyGEN = &m_stub_pyGEN;  
+  p_m_stub_ptGEN = &m_stub_ptGEN;  
   p_m_stub_etaGEN = &m_stub_etaGEN;  
   
   TT->SetBranchAddress("STUB_n",         &m_stub);
-  //  TT->SetBranchAddress("STUB_tp",        &p_m_stub_tp);
-  TT->SetBranchAddress("STUB_layer",     &p_m_stub_layer);
-  TT->SetBranchAddress("STUB_module",    &p_m_stub_module);
-  TT->SetBranchAddress("STUB_ladder",    &p_m_stub_ladder);
-  TT->SetBranchAddress("STUB_seg",       &p_m_stub_seg);
+  TT->SetBranchAddress("STUB_modid",     &p_m_stub_modid);
   TT->SetBranchAddress("STUB_strip",     &p_m_stub_strip);
-  TT->SetBranchAddress("STUB_pxGEN",     &p_m_stub_pxGEN);
-  TT->SetBranchAddress("STUB_pyGEN",     &p_m_stub_pyGEN);
+  TT->SetBranchAddress("STUB_ptGEN",     &p_m_stub_ptGEN);
   TT->SetBranchAddress("STUB_etaGEN",    &p_m_stub_etaGEN);
+  TT->SetBranchStatus("*",0);
+  TT->SetBranchStatus("STUB_n",1);
+  TT->SetBranchStatus("STUB_modid",1);
+  TT->SetBranchStatus("STUB_strip",1); 
+  TT->SetBranchStatus("STUB_ptGEN",1); 
+  TT->SetBranchStatus("STUB_etaGEN",1);
 
   int nb_entries = TT->GetEntries();
   cout<<nb_entries<<" events found."<<endl;
@@ -119,7 +119,7 @@ TChain* PatternGenerator::createTChain(string directoryName, string tchainName){
   return TT;
 }
 
-int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nbTrackUsed, SectorTree* sectors, map<int,pair<float,float> > eta_limits){
+int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nbTrackUsed, SectorTree* sectors, map<int,pair<float,float> > eta_limits, int* coverageEstimation){
 
   if(tracker_layers.size()==0){
     cout<<"No layer defined!"<<endl;
@@ -127,7 +127,8 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
   }
   vector<Pattern*> patterns;
 
-  sectors->setSuperStripSize(superStripSize);
+  if(coverageEstimation==NULL)
+    sectors->setSuperStripSize(superStripSize);
 
   //--> Signification (et dimension) des variables
 
@@ -144,10 +145,9 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
   vector<int> module_per_layer(tracker_layers.size());
 
   while(nbModuleOk<evtNumber && (*evtIndex)<n_entries_TT){
-    //cout<<"nouvel evenement"<<endl;
     TT->GetEntry((*evtIndex));
     (*evtIndex)++;
-    
+
     //cout<<"index "<<*evtIndex<<endl;
 
     //initialize arrays
@@ -165,23 +165,35 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
 
     //check the layers of the stubs
     for(int j=0;j<m_stub;j++){
-      //if(m_stub_tp[j]!=0){//The stub is not coming from the primary particule : we do not use it for pattern generation
-      //	continue;
-      //}
+    
       if(m_stub_etaGEN[j]<etaMin){// eta of the generating particule is bellow the threshold -> we do not use it for pattern generation
-      	continue;
+	continue;
       }
       if(m_stub_etaGEN[j]>etaMax){// eta of the generating particule is above the threshold -> we do not use it for pattern generation
-      	continue;
-      }
-      float pt_GEN = sqrt(m_stub_pxGEN[j]*m_stub_pxGEN[j]+m_stub_pyGEN[j]*m_stub_pyGEN[j]);
-      if(pt_GEN<ptMin){// The PT of the generating particule is below the minimum required -> we do not use it for pattern generation
 	continue;
       }
-      if(pt_GEN>ptMax){// The PT of the generating particule is above the maximum accepted -> we do not use it for pattern generation
+      if(m_stub_ptGEN[j]<ptMin){// The PT of the generating particule is below the minimum required -> we do not use it for pattern generation
+        continue;
+      }
+      if(m_stub_ptGEN[j]>ptMax){// The PT of the generating particule is above the maximum accepted -> we do not use it for pattern generation
+        continue;
+      }
+
+      int value = m_stub_modid[j];
+      //cout<<value<<endl;
+      int layer = value/1000000;
+      value = value-layer*1000000;
+      int ladder = value/10000;
+      value = value-ladder*10000;
+      int module = value/100;
+      value = value-module*100;
+      //cout<<"layer : "<<layer<<" ladder : "<<ladder<<" module : "<<module<<" segment : "<<value<<endl;
+
+      vector<int>::iterator iter;
+      iter=find(inactive_layers.begin(),inactive_layers.end(),layer);
+      if(iter!=inactive_layers.end()){
 	continue;
       }
-      int layer = m_stub_layer[j];
 
       int layer_position=-1;
       for(unsigned int cpt=0;cpt<tracker_layers.size();cpt++){
@@ -193,9 +205,8 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
 
       if(layer_position!=-1){ // is this layer in the layer list?
 	layers[layer_position]=j;
-	ladder_per_layer[layer_position]=CMSPatternLayer::getLadderCode(layer, m_stub_ladder[j]);
-	short module = -1;
-	module = CMSPatternLayer::getModuleCode(layer, m_stub_module[j]);
+	ladder_per_layer[layer_position]=CMSPatternLayer::getLadderCode(layer, ladder);
+	module = CMSPatternLayer::getModuleCode(layer, module);
 	module_per_layer[layer_position]=module;
       }
 
@@ -280,10 +291,8 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
     if(variableRes){ // we use variable resolution patterns so we create 2 patterns with different resolution
       lowDef_p = new Pattern(tracker_layers.size());
     }
-    
     for(unsigned int j=0;j<tracker_layers.size();j++){
       int stub_number = layers[j];
- 
       short module = -1;
       short ladder = -1;
       short strip = -1;
@@ -298,21 +307,26 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
 	ladder=15;//should never happen so this superstrip will never be activated
       }
       else{
-	module = sector->getModuleCode(tracker_layers[j], CMSPatternLayer::getLadderCode(tracker_layers[j],m_stub_ladder[stub_number]), CMSPatternLayer::getModuleCode(tracker_layers[j],m_stub_module[stub_number]));
-
-	ladder=sector->getLadderCode(tracker_layers[j],CMSPatternLayer::getLadderCode(tracker_layers[j],m_stub_ladder[stub_number]));
+	int value = m_stub_modid[stub_number];
+	//	cout<<value<<endl;
+	value = value-(value/1000000)*1000000;
+	ladder = value/10000;
+	value = value-ladder*10000;
+	module = value/100;
+	value = value-module*100;
+	seg = value;
+	//cout<<" ladder : "<<ladder<<" module : "<<module<<" segment : "<<seg<<endl;
+	
+	module = sector->getModuleCode(tracker_layers[j], CMSPatternLayer::getLadderCode(tracker_layers[j],ladder), CMSPatternLayer::getModuleCode(tracker_layers[j],module));
+	ladder=sector->getLadderCode(tracker_layers[j],CMSPatternLayer::getLadderCode(tracker_layers[j],ladder));
 	
 	//	cout<<"Layer "<<tracker_layers[j]<<" ladder "<<m_stub_ladder[stub_number]<<" module "<<m_stub_module[stub_number]<<" devient ladder "<<ladder<<" module "<<module<<endl;
-
 	strip = m_stub_strip[stub_number]/superStripSize;
-	
 	if(variableRes){
 	  stripLD = strip/ld_fd_factor;
 	}
-
-	seg =  CMSPatternLayer::getSegmentCode(tracker_layers[j], CMSPatternLayer::getLadderCode(tracker_layers[j],m_stub_ladder[stub_number]), m_stub_seg[stub_number]);
+	seg =  CMSPatternLayer::getSegmentCode(tracker_layers[j], CMSPatternLayer::getLadderCode(tracker_layers[j],ladder), seg);
       }
-
       /*
       cout<<"Event "<<*evtIndex<<endl;
       cout<<"    Layer "<<m_stub_layer[stub_number]<<" segment "<<seg<<" module "<<CMSPatternLayer::getModuleCode(m_stub_layer[stub_number],m_stub_module[stub_number])<<" ladder "<<m_stub_ladder[stub_number]<<" strip "<<strip<<endl;
@@ -320,7 +334,8 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
       cout<<endl;
       */
 
-      last_pt = sqrt(m_stub_pxGEN[stub_number]*m_stub_pxGEN[stub_number]+m_stub_pyGEN[stub_number]*m_stub_pyGEN[stub_number]);
+      if(stub_number!=-2)//this is not a fake stub
+	last_pt = m_stub_ptGEN[stub_number];
       CMSPatternLayer pat;
       CMSPatternLayer lowDef_layer;
       pat.setValues(module, ladder, strip, seg);
@@ -332,7 +347,6 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
       }
 
     }
-
     if(p==NULL){
       continue;
     }
@@ -341,13 +355,21 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
     //cout<<"creation pattern : "<<endl;
     //cout<<*lowDef_p<<endl;
     
-    if(variableRes){
-      sector->getPatternTree()->addPattern(lowDef_p,p, last_pt);
+    if(coverageEstimation==NULL){
+      if(variableRes){
+	sector->getPatternTree()->addPattern(lowDef_p,p, last_pt);
+      }
+      else{
+	sector->getPatternTree()->addPattern(p,NULL, last_pt);
+      }
     }
     else{
-      sector->getPatternTree()->addPattern(p,NULL, last_pt);
+      if(variableRes){
+	if(sector->getPatternTree()->checkPattern(lowDef_p, p))//does the bank contains the pattern?
+	  (*coverageEstimation)++;
+      }
     }
-
+    
     delete p;
     if(lowDef_p!=NULL)
         delete lowDef_p;
@@ -356,16 +378,18 @@ int PatternGenerator::generate(TChain* TT, int* evtIndex, int evtNumber, int* nb
 
   *nbTrackUsed=nbModuleOk;
 
-  cout<<"Event index : "<<*evtIndex<<endl;
-  cout<<"Nb Events with stubs on all layers : "<<nbInLayer<<endl;
-  cout<<"Nb Events in sectors : "<<nbInSector<<endl;
-  cout<<"Nb Events in good modules : "<<nbModuleOk<<endl;
+  if(coverageEstimation==NULL){
+    cout<<"Event index : "<<*evtIndex<<endl;
+    cout<<"Nb Events with stubs on all layers : "<<nbInLayer<<endl;
+    cout<<"Nb Events in sectors : "<<nbInSector<<endl;
 
-  if(variableRes)
-    return sectors->getFDPatternNumber();
+    if(variableRes)
+      return sectors->getFDPatternNumber();
+    else
+      return sectors->getLDPatternNumber();
+  }
   else
-    return sectors->getLDPatternNumber();
-
+    return 0;
 }
 
 
@@ -402,12 +426,13 @@ void PatternGenerator::generate(SectorTree* sectors, int step, float threshold, 
       tracks[loop-1]=nbPatterns;
       patterns[loop-1]=(1-dif)*100;
     }
-    if(loop>1)
-      cout<<"Current patterns bank size : "<<nbPatterns<<" (Coverage : "<<(1-dif)*100<<"%)"<<endl;
+    if(loop>1){
+      if(iterationNbTracks==0)
+	cout<<"No more tracks to use : final patterns bank size : "<<nbPatterns<<endl;
+      else
+	cout<<"Current patterns bank size : "<<nbPatterns<<" (Coverage : "<<(1-dif)*100<<"%)"<<endl;
+    }
   }
-
-  //free the TChain
-  delete tc;
   
   TGraph* nbPatt = new TGraph(loop-1,tracks,patterns);
   nbPatt->SetTitle("Pattern Bank Generation");
@@ -421,8 +446,21 @@ void PatternGenerator::generate(SectorTree* sectors, int step, float threshold, 
   if(variableRes){
     cout<<"Creating variable resolution bank..."<<endl;
     sectors->computeAdaptativePatterns(variableRes);
+    if(iterationNbTracks==step){
+      cout<<"Estimating coverage..."<<endl;
+      int recognizedTracks=0;
+      generate(tc, &indexPart, step, &nbTracks, sectors, eta_limits,&recognizedTracks);
+      float cov = recognizedTracks*100/nbTracks;
+      cout<<"Estimated coverage with variable resolution : "<<cov<<"% (estimated on "<<nbTracks<<" tracks)"<<endl;
+    }
+    else{
+      cout<<"Not enough tracks to estimate the coverage."<<endl;
+    }
   }
-  
+
+  //free the TChain
+  delete tc;
+
   vector<Sector*> v_sector = sectors->getAllSectors();
   for(unsigned int k=0;k<v_sector.size();k++){
     vector<int> PT = v_sector[k]->getPatternTree()->getPTHisto();

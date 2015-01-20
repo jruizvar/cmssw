@@ -1,4 +1,6 @@
 import FWCore.ParameterSet.Config as cms
+import SLHCUpgradeSimulations.Configuration.customise_PFlow as customise_PFlow
+
 #GEN-SIM so far...
 def customise(process):
     if hasattr(process,'DigiToRaw'):
@@ -56,7 +58,14 @@ def customise_Digi(process):
     process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTECHighTof"))
     process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIDLowTof"))
     process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIDHighTof"))
-    
+
+    return process
+
+def customise_Digi_TTI(process):
+	# needed in addition to customise_Digi (only bx=0 for TrackingParticles)
+    if hasattr(process,'digitisation_step'):
+    	process.mix.digitizers.mergedtruth.maximumPreviousBunchCrossing = cms.uint32(0)
+    	process.mix.digitizers.mergedtruth.maximumSubsequentBunchCrossing = cms.uint32(0)
     return process
 
 
@@ -191,6 +200,10 @@ def customise_Reco(process,pileup):
     process.pixelTracks.FilterPSet.tipMax = cms.double(0.05)
     process.pixelTracks.RegionFactoryPSet.RegionPSet.originRadius =  cms.double(0.02)
 
+    # Particle flow needs to know that the eta range has increased, for
+    # when linking tracks to HF clusters
+    process=customise_PFlow.customise_extendedTrackerBarrel( process )
+
     return process
 
 def customise_condOverRides(process):
@@ -231,6 +244,9 @@ def l1EventContent(process):
             getattr(process,b).outputCommands.append('keep *_simSiPixelDigis_*_*')
 
     return process
+
+
+
 
 def customise_DQM(process,pileup):
     # We cut down the number of iterative tracking steps

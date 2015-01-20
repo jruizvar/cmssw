@@ -7,7 +7,7 @@
 
 using namespace std;
 /**
-   \brief A map of PatternTrunks
+   \brief This class is used to store all the patterns (both low and high resolutions). To quickly find a pattern, PatternTrunk objects are stored in a map using the low resolution pattern value as the map key (string made of the decimal representation of the patternLayers values).
 **/
 class PatternTree{
  public:
@@ -62,6 +62,17 @@ class PatternTree{
      \param modules The modules in the sector (one vector per ladder)
   **/
   void link(Detector& d, const vector< vector<int> >& sec, const vector<map<int, vector<int> > >& modules);
+#ifdef IPNL_USE_CUDA
+  /**
+     \brief Link all patterns to the detector structure
+     \param p the pattern bank structure on the device
+     \param d The detector structure on the device
+     \param sec The ladders in the sector (one vector per layer)
+     \param modules The modules in the sector (one vector per ladder)
+     \param layers The layers IDs
+  **/
+  void linkCuda(patternBank* p, deviceDetector* d, const vector< vector<int> >& sec, const vector<map<int, vector<int> > >& modules, vector<int> layers);
+#endif
   /**
      \brief Returns a vector of copies of the active patterns
      \brief active_threshold The minimum number of hit super strips to activate the pattern
@@ -78,15 +89,36 @@ class PatternTree{
      \param p The PatternTree containing the patterns to add
   **/
   void addPatternsFromTree(PatternTree* p);
+  
+  /**
+     \brief Check if the given pattern is contained in the bank (using DC bits)
+     \brief Should only be used with a DC bit activated bank
+     \param lp The low definition pattern
+     \param hp The high definition version of the pattern
+     \return True if the pattern is already in the bank, false otherwise
+   **/
+  bool checkPattern(Pattern* lp, Pattern* hp);
+
+  /**
+     \brief Replace the internal map of patterns with a vector of patterns (reduces memory consumption).
+     \brief If a method searching for a pattern is called, we will automatically switch back to a map.
+   **/
+  void switchToVector();
 
  private:
   map<string, PatternTrunk*> patterns;
+  vector<PatternTrunk*> v_patterns;
 
   /**
      \brief Add a pattern and update de DC bits if necessary
      \param ldp The pattern to add
   **/
   void addPatternForMerging(GradedPattern* ldp);
+
+  /**
+     \brief Update the internal map and clear the internal vector
+  **/
+  void switchToMap();
 
   friend class boost::serialization::access;
  

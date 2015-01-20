@@ -14,7 +14,7 @@
 using namespace std;
 
 /**
-   \brief A Pattern contains one PatternLayer per layer
+   \brief Representation of a pattern, a Pattern contains one PatternLayer per layer.
 **/
 
 class Pattern{
@@ -61,6 +61,17 @@ class Pattern{
      \param modules The modules in the sector (one vector per ladder)
   **/
   void link(Detector& d, const vector< vector<int> >& sec, const vector<map<int, vector<int> > >& modules);
+#ifdef IPNL_USE_CUDA
+  /**
+     \brief Create links between patterns and detector on the device
+     \param p the pattern bank structure on the device
+     \param d The detector structure on the device
+     \param pattern_index The index of the pattern in the bank
+     \param modules The modules in the sector (one vector per ladder)
+     \param layers list of layers IDs
+  **/
+  void linkCuda(patternBank* p, deviceDetector* d, int pattern_index, const vector< vector<int> >& sec, const vector<map<int, vector<int> > >& modules, vector<int> layers, unsigned int* cache);
+#endif
   /**
      \brief Reset the links between the pattern layers and the super strips
   **/
@@ -93,10 +104,16 @@ class Pattern{
   vector<Hit*> getHits(int layerPosition);
 
   /**
+     \brief Check if hdp is fully included in the pattern
+     \param hdp The pattern to check
+     \return True if hdp is included in the pattern
+   **/
+  bool contains(Pattern* hdp);
+
+  /**
      \brief Allows to display a Pattern as a string
   **/
   friend ostream& operator<<(ostream& out, const Pattern& s);
-
 
  private:
   int nb_layer;

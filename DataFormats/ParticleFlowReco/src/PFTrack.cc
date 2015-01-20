@@ -6,7 +6,7 @@
 using namespace reco;
 using namespace std;
 
-const unsigned PFTrack::nMaxTrackingLayers_ = 17;
+const unsigned PFTrack::nMaxTrackingLayers_ = 25;
 
 PFTrack::PFTrack() :
   charge_(0.),
@@ -74,9 +74,9 @@ void PFTrack::calculatePositionREP() {
 
  
 const reco::PFTrajectoryPoint& PFTrack::extrapolatedPoint(unsigned layerid) const {
-  
+  const unsigned offset_layerid = nTrajectoryMeasurements() + layerid;
   if( layerid >= reco::PFTrajectoryPoint::NLayers ||
-      nTrajectoryMeasurements() + layerid >= trajectoryPoints_.size() ) {
+      offset_layerid >= trajectoryPoints_.size() ) {
 
     // cout<<(*this)<<endl;
     // cout<<"lid "<<layerid<<" "<<nTrajectoryMeasurements()<<" "<<trajectoryPoints_.size()<<endl;
@@ -92,7 +92,7 @@ const reco::PFTrajectoryPoint& PFTrack::extrapolatedPoint(unsigned layerid) cons
   if (layerid < indexInnermost_)
     return trajectoryPoints_[ layerid ];
   else
-    return trajectoryPoints_[ nTrajectoryMeasurements() + layerid ];  
+    return trajectoryPoints_[ offset_layerid ];  
 }
 
 

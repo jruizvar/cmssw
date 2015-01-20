@@ -122,7 +122,10 @@ reco::IsoDeposit EgammaRecHitExtractor::deposit(const edm::Event & iEvent,
   const CaloGeometry* caloGeom = pG.product(); 
   const CaloSubdetectorGeometry* barrelgeom = caloGeom->getSubdetectorGeometry(DetId::Ecal,EcalBarrel);
   const CaloSubdetectorGeometry* endcapgeom = caloGeom->getSubdetectorGeometry(DetId::Ecal,EcalEndcap);
+  if( endcapgeom==nullptr ) endcapgeom=caloGeom->getSubdetectorGeometry(DetId::Ecal,EcalShashlik); //Shervin
   
+  //assert(endcapgeom!=nullptr);
+
   static std::string metname = "EgammaIsolationAlgos|EgammaRecHitExtractor";
   
   std::auto_ptr<const CaloRecHitMetaCollectionV> barrelRecHits(0), endcapRecHits(0);
@@ -157,7 +160,7 @@ reco::IsoDeposit EgammaRecHitExtractor::deposit(const edm::Event & iEvent,
     collect(deposit, sc, barrelgeom, caloGeom, *barrelEcalRecHitsH, sevLevel, true);
   } 
 
-  if ((!inBarrel) || tryBoth_) {
+  if ( endcapgeom != nullptr && ( (!inBarrel) || tryBoth_ ) ) {
     collect(deposit, sc, endcapgeom, caloGeom, *endcapEcalRecHitsH, sevLevel, false);
   }
   

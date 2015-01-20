@@ -13,6 +13,10 @@
 #include "KarimakiTrackFitter.h"
 #include "HoughFitter.h"
 
+#ifdef IPNL_USE_CUDA
+#include "gpu_struct.h"
+#endif
+
 #ifndef __APPLE__
 BOOST_CLASS_EXPORT_KEY(CMSPatternLayer) 
 BOOST_CLASS_EXPORT_KEY(PrincipalTrackFitter) 
@@ -30,6 +34,7 @@ class SectorTree{
 
  private:
   multimap<string, Sector*> sectors;
+  bool mapNeedsUpdate;
   vector<Sector*> sector_list;
   /**
      \brief used to know the superstrip size used for the patterns contained in this sectorTree.
@@ -49,7 +54,6 @@ class SectorTree{
   template<class Archive> void load(Archive & ar, const unsigned int version){
     ar >> sector_list;
     ar >> superStripSize;
-    updateSectorMap();
   }
   
   BOOST_SERIALIZATION_SPLIT_MEMBER()
@@ -104,6 +108,14 @@ class SectorTree{
      \param d The Detector object
   **/
   void link(Detector& d);
+#ifdef IPNL_USE_CUDA
+  /**
+     Link all the patterns in the patternBank region to the super strips contained in the deviceDetector object
+     \param d The Detector object on the device
+     \param p The patterns bank on the device
+  **/
+  void linkCuda(patternBank* p, deviceDetector* d);
+#endif
   /**
      \brief Get the active patterns in each sector
      \param active_threshold The minimum number of hit super strips to activate the pattern

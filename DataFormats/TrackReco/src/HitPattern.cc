@@ -9,6 +9,7 @@
 #include "DataFormats/MuonDetId/interface/DTLayerId.h"
 #include "DataFormats/MuonDetId/interface/CSCDetId.h"
 #include "DataFormats/MuonDetId/interface/RPCDetId.h"
+#include "DataFormats/MuonDetId/interface/GEMDetId.h"
 using namespace reco;
 
 
@@ -28,9 +29,11 @@ uint32_t HitPattern::encode(const TrackingRecHit & hit, unsigned int i){
   // adding tracker/muon detector bit
   pattern += ((detid)&SubDetectorMask)<<SubDetectorOffset;
   
-  // adding substructure (PXB,PXF,TIB,TID,TOB,TEC, or DT,CSC,RPC) bits 
+  // adding substructure (PXB,PXF,TIB,TID,TOB,TEC, or DT,CSC,RPC,GEM) bits 
   uint32_t subdet = id.subdetId();
   pattern += ((subdet)&SubstrMask)<<SubstrOffset;
+
+  //std::cout<<"Pattern: "<<pattern<<std::endl;
   
   // adding layer/disk/wheel bits
   uint32_t layer = 0;
@@ -56,6 +59,10 @@ uint32_t HitPattern::encode(const TrackingRecHit & hit, unsigned int i){
       RPCDetId rpcid(id.rawId());
       layer = ((rpcid.station()-1)<<2) + abs(rpcid.region());
       if (rpcid.station() <= 2) layer += 2*(rpcid.layer()-1);
+    }
+    else if (subdet == (uint32_t) MuonSubdetId::GEM) {
+      GEMDetId gemid(id.rawId());
+      layer = ((gemid.roll()-1)<<1) + abs(gemid.layer()-1);
     }
   }
   pattern += (layer&LayerMask)<<LayerOffset;
@@ -129,6 +136,10 @@ void HitPattern::appendHit(const TrackingRecHit & hit){
     }
    
     else if (subdet == (uint32_t) MuonSubdetId::RPC) {
+      hits.push_back(&hit);
+    }
+
+    else if (subdet == (uint32_t) MuonSubdetId::GEM) {
       hits.push_back(&hit);
     }
   }
@@ -334,21 +345,19 @@ uint32_t HitPattern::getTrackerMonoStereo (uint32_t substr, uint32_t layer) cons
 
 
 
-int HitPattern::pixelBarrelLayersWithMeasurement() const {
+int HitPattern::pixelBarrelLayersWithMeasurement(uint32_t MaxPixBarrelLayer) const {
   int count = 0;
   uint32_t substr = PixelSubdetector::PixelBarrel;
-  uint32_t NPixBarrel = 10;
-  for (uint32_t layer=1; layer<=NPixBarrel; layer++) {
+  for (uint32_t layer=1; layer<=MaxPixBarrelLayer; layer++) {
     if (getTrackerLayerCase(substr, layer) == 0) count++;
   }
   return count;
 }
 
-int HitPattern::pixelEndcapLayersWithMeasurement() const {
+int HitPattern::pixelEndcapLayersWithMeasurement(uint32_t MaxPixForwardDisk) const {
   int count = 0;
   uint32_t substr = PixelSubdetector::PixelEndcap;
-  uint32_t NPixForward = 10;
-  for (uint32_t layer=1; layer<=NPixForward; layer++) {
+  for (uint32_t layer=1; layer<=MaxPixForwardDisk; layer++) {
     if (getTrackerLayerCase(substr, layer) == 0) count++;
   }
   return count;
@@ -578,6 +587,8 @@ void HitPattern::printHitPattern (int position, std::ostream &stream) const
             stream << "\tcsc ring " << getCSCRing(pattern); 
          } else if (muonRPCHitFilter(pattern)) {
             stream << "\trpc " << (getRPCregion(pattern) ? "endcaps" : "barrel") << ", layer " << getRPCLayer(pattern); 
+         } else if (muonGEMHitFilter(pattern)) {
+            stream << "\tgem " << (getGEMLayer(pattern) ? "layer1" : "layer2") << ", roll " << getGEMRoll(pattern);
          } else {
             stream << "(UNKNOWN Muon SubStructure!) \tsubsubstructure " << getSubStructure(pattern);
          }

@@ -108,7 +108,8 @@ namespace {
 
 }
 
-HcalHardcodeCalibrations::HcalHardcodeCalibrations ( const edm::ParameterSet& iConfig ): he_recalibration(0), hf_recalibration(0)
+HcalHardcodeCalibrations::HcalHardcodeCalibrations ( const edm::ParameterSet& iConfig ): 
+he_recalibration(0), hb_recalibration(0), hf_recalibration(0), setHEdsegm(false), setHBdsegm(false), SipmLumi(0.0)
 {
   edm::LogInfo("HCAL") << "HcalHardcodeCalibrations::HcalHardcodeCalibrations->...";
 
@@ -123,51 +124,25 @@ HcalHardcodeCalibrations::HcalHardcodeCalibrations ( const edm::ParameterSet& iC
     iLumi=iConfig.getParameter<double>("iLumi");
 
   if( iLumi > 0.0 ) {
-    bool he_recalib = iConfig.getParameter<bool>("HERecalibration");
+    unsigned he_recalib = iConfig.getParameter<unsigned>("HERecalibration");
+    unsigned hb_recalib = iConfig.getParameter<unsigned>("HBRecalibration");
     bool hf_recalib = iConfig.getParameter<bool>("HFRecalibration");
     if(he_recalib) {
       double cutoff = iConfig.getParameter<double>("HEreCalibCutoff"); 
-      he_recalibration = new HERecalibration(iLumi,cutoff);
+      he_recalibration = new HERecalibration(iLumi,cutoff,he_recalib);
+    }
+    if(hb_recalib) {
+      double cutoff = iConfig.getParameter<double>("HBreCalibCutoff"); 
+      hb_recalibration = new HBRecalibration(iLumi,cutoff,hb_recalib);
     }
     if(hf_recalib)  hf_recalibration = new HFRecalibration();
     
+	SipmLumi = iLumi;
+	bool doSipmAging = iConfig.getParameter<bool>("SipmAging");
+	if(!doSipmAging) SipmLumi = 0.0;
+	
     //     std::cout << " HcalHardcodeCalibrations:  iLumi = " <<  iLumi << std::endl;
   }
-
-  bool relabel_=false;
-  edm::ParameterSet ps0;
-  if ( iConfig.exists("HcalReLabel") ) {
-    ps0 = iConfig.getParameter<edm::ParameterSet>("HcalReLabel");
-    relabel_= ps0.getUntrackedParameter<bool>("RelabelHits",false);
-  }
-
-  if (relabel_) {
-    std::vector<std::vector<int>> m_segmentation;
-    m_segmentation.resize(29);
-    edm::ParameterSet ps1 = ps0.getUntrackedParameter<edm::ParameterSet>("RelabelRules");
-    for (int i = 0; i < 29; i++) {
-      char name[10];
-      snprintf(name,10,"Eta%d",i+1);
-      if (i > 0) {
-	m_segmentation[i]=
-	  ps1.getUntrackedParameter<std::vector<int>>(name,m_segmentation[i-1]);
-      } else {
-	m_segmentation[i]=ps1.getUntrackedParameter<std::vector<int> >(name);
-      }
-      
-      /*
-      std::cout << name;
-      for (unsigned int k=0; k<m_segmentation[i].size(); k++) {
-	std::cout << " [" << k << "] " << m_segmentation[i][k];
-      }
-      std::cout << std::endl;
-      */
-
-    }
-
-    if(he_recalibration !=0) he_recalibration->setDsegm(m_segmentation);
-  }
-
 
   std::vector <std::string> toGet = iConfig.getUntrackedParameter <std::vector <std::string> > ("toGet");
   for(std::vector <std::string>::iterator objectName = toGet.begin(); objectName != toGet.end(); ++objectName ) {
@@ -293,7 +268,7 @@ std::auto_ptr<HcalPedestals> HcalHardcodeCalibrations::producePedestals (const H
   std::auto_ptr<HcalPedestals> result (new HcalPedestals (topo,false));
   std::vector <HcalGenericDetId> cells = allCells(*topo);
   for (std::vector <HcalGenericDetId>::const_iterator cell = cells.begin (); cell != cells.end (); cell++) {
-    HcalPedestal item = HcalDbHardcode::makePedestal (*cell, false, iLumi);
+    HcalPedestal item = HcalDbHardcode::makePedestal (*cell, false, SipmLumi);
     result->addValues(item);
   }
   return result;
@@ -308,7 +283,7 @@ std::auto_ptr<HcalPedestalWidths> HcalHardcodeCalibrations::producePedestalWidth
   std::auto_ptr<HcalPedestalWidths> result (new HcalPedestalWidths (topo,false));
   std::vector <HcalGenericDetId> cells = allCells(*htopo);
   for (std::vector <HcalGenericDetId>::const_iterator cell = cells.begin (); cell != cells.end (); cell++) {
-    HcalPedestalWidth item = HcalDbHardcode::makePedestalWidth (*cell, iLumi);
+    HcalPedestalWidth item = HcalDbHardcode::makePedestalWidth (*cell, SipmLumi);
     result->addValues(item);
   }
   return result;
@@ -394,6 +369,24 @@ std::auto_ptr<HcalRespCorrs> HcalHardcodeCalibrations::produceRespCorrs (const H
   rcd.getRecord<HcalRecNumberingRecord>().get(htopo);
   const HcalTopology* topo=&(*htopo);
 
+  //set depth segmentation for HB/HE recalib - only happens once
+  if((he_recalibration && !setHEdsegm) || (hb_recalibration && !setHBdsegm)){
+    std::vector<std::vector<int>> m_segmentation;
+    m_segmentation.resize(30);
+    for (int i = 0; i < 30; i++) {
+      if(i>0) topo->getDepthSegmentation(i,m_segmentation[i]);
+    }
+    
+	if(he_recalibration && !setHEdsegm){
+      he_recalibration->setDsegm(m_segmentation);
+	  setHEdsegm = true;
+	}
+	if(hb_recalibration && !setHBdsegm){
+      hb_recalibration->setDsegm(m_segmentation);
+	  setHBdsegm = true;
+	}
+  }
+  
   std::auto_ptr<HcalRespCorrs> result (new HcalRespCorrs (topo));
   std::vector <HcalGenericDetId> cells = allCells(*topo);
   for (std::vector <HcalGenericDetId>::const_iterator cell = cells.begin (); cell != cells.end (); cell++) {
@@ -409,6 +402,19 @@ std::auto_ptr<HcalRespCorrs> HcalHardcodeCalibrations::produceRespCorrs (const H
       
       /*
 	std::cout << "HE ieta, depth = " << ieta_  << ",  " << depth_  
+	<< "   corr = "  << corr << std::endl;
+      */
+
+    }
+	else if ((hb_recalibration != 0 ) && 
+	((*cell).genericSubdet() == HcalGenericDetId::HcalGenBarrel)) {
+      
+      int depth_ = HcalDetId(*cell).depth();
+      int ieta_  = HcalDetId(*cell).ieta();
+      corr = hb_recalibration->getCorr(ieta_, depth_); 
+      
+      /*
+	std::cout << "HB ieta, depth = " << ieta_  << ",  " << depth_  
 	<< "   corr = "  << corr << std::endl;
       */
 

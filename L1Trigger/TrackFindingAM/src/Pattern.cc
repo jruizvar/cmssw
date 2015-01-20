@@ -139,6 +139,17 @@ void Pattern::link(Detector& d, const vector< vector<int> >& sec, const vector<m
   }
 }
 
+#ifdef IPNL_USE_CUDA
+void Pattern::linkCuda(patternBank* p, deviceDetector* d, int pattern_index, const vector< vector<int> >& sec, const vector<map<int, vector<int> > >& modules, vector<int> layers,
+                       unsigned int* cache){
+  memset(cache,PATTERN_UNUSED,PATTERN_LAYERS*PATTERN_SSTRIPS*sizeof(unsigned int));
+  for(int i=0;i<nb_layer;i++){
+    layer_strips[i]->getSuperStripCuda(i, sec[i], modules[i], layers[i], cache+i*PATTERN_SSTRIPS);
+  }
+  cudaSetLink(p,pattern_index*PATTERN_SIZE,cache);
+}
+#endif
+
 vector<Hit*> Pattern::getHits(){
   vector<Hit*> hits;
   for(int i=0;i<nb_layer;i++){
@@ -159,6 +170,28 @@ vector<Hit*> Pattern::getHits(int layerPosition){
     }
   }
   return hits;
+}
+
+bool Pattern::contains(Pattern* hdp){
+  if(nb_layer!=hdp->getNbLayers())
+    return false;
+  
+  for(int i=0;i<nb_layer;i++){
+    int factor = (int)pow(2.0,layer_strips[i]->getDCBitsNumber());
+    int base_index = layer_strips[i]->getStrip()*factor;
+    vector<string> positions=layer_strips[i]->getPositionsFromDC();
+    bool found = false;
+    for(unsigned int j=0;j<positions.size();j++){
+      if(hdp->getLayerStrip(i)->getStrip()==base_index+PatternLayer::GRAY_POSITIONS[positions[j]]){
+	found=true;
+	break;
+      }
+    }
+    if(!found){
+      return false;
+    }
+  }
+  return true;
 }
 
 ostream& operator<<(ostream& out, const Pattern& s){

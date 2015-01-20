@@ -1,8 +1,12 @@
 #include <DataFormats/GEMDigi/interface/GEMDigi.h>
 #include <DataFormats/GEMDigi/interface/GEMDigiCollection.h>
+#include <DataFormats/GEMDigi/interface/ME0DigiPreReco.h>
+#include <DataFormats/GEMDigi/interface/ME0DigiPreRecoCollection.h>
 
 #include <DataFormats/GEMDigi/interface/GEMCSCPadDigi.h>
 #include <DataFormats/GEMDigi/interface/GEMCSCPadDigiCollection.h>
+#include <DataFormats/GEMDigi/interface/GEMCSCCoPadDigi.h>
+#include <DataFormats/GEMDigi/interface/GEMCSCCoPadDigiCollection.h>
 
 #include <DataFormats/Common/interface/Wrapper.h>
 #include <vector>
@@ -21,5 +25,18 @@ namespace{
     std::vector<std::vector<GEMCSCPadDigi> >  vvgc;
     GEMCSCPadDigiCollection gccol;
     edm::Wrapper<GEMCSCPadDigiCollection> wgc;
+
+    GEMCSCCoPadDigi gcp;
+    std::vector<GEMCSCCoPadDigi>  vgcp;
+    std::vector<std::vector<GEMCSCCoPadDigi> >  vvgcp;
+    GEMCSCCoPadDigiCollection gcpcol;
+    edm::Wrapper<GEMCSCCoPadDigiCollection> wgcp;
+
+    ME0DigiPreReco m;
+    std::vector<ME0DigiPreReco>  vm;
+    std::vector<std::vector<ME0DigiPreReco> >  vvm;
+    ME0DigiPreRecoCollection mcol;
+    edm::Wrapper<ME0DigiPreRecoCollection> wm;
+
   };
 }

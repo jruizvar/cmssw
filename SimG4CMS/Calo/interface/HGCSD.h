@@ -39,17 +39,14 @@ protected:
 
 private:    
 
-  uint32_t                      setDetUnitId(int, G4ThreeVector, int,int,int);
-  std::vector<double>           getDDDArray(const std::string&, 
-                                            const DDsvalues_type&);
+  uint32_t                      setDetUnitId(ForwardSubdetector &, int &, int &, int &, G4ThreeVector &);
   bool                          isItinFidVolume (G4ThreeVector&) {return true;}
   int                           setTrackID(G4Step * step);
 
   HGCNumberingScheme*           numberingScheme;
-  std::vector<double>           gpar;
-  G4int                         mumPDG, mupPDG; 
+  G4int                         verbosity, mumPDG, mupPDG; 
   double                        eminHit;
-
+  ForwardSubdetector            myFwdSubdet_;
 };
 
 #endif // HGCSD_h

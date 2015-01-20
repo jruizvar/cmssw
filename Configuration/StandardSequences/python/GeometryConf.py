@@ -16,10 +16,26 @@ GeometryConf={
     'Extended2017'   : 'Extended2017,Extended2017Reco',
     'Extended2019'   : 'Extended2019,Extended2019Reco',
     'Extended2023'   : 'Extended2023,Extended2023Reco',
+    'Extended2023Pixel'   : 'Extended2023Pixel,Extended2023PixelReco',
+    'Extended2023TTI'   : 'Extended2023TTI,Extended2023TTIReco',
+    'Extended2023Muon'   : 'Extended2023Muon,Extended2023MuonReco',
+    'Extended2023Muon4Eta'   : 'Extended2023Muon4Eta,Extended2023Muon4EtaReco',
+    'Extended2023SHCal'   : 'Extended2023SHCal,Extended2023SHCalReco',
+    'Extended2023SHCal4Eta'   : 'Extended2023SHCal4Eta,Extended2023SHCal4EtaReco',
+    'Extended2023SHCalNoTaper'   : 'Extended2023SHCalNoTaper,Extended2023SHCalNoTaperReco',
+    'Extended2023SHCalNoTaper4Eta'   : 'Extended2023SHCalNoTaper4Eta,Extended2023SHCalNoTaper4EtaReco',
+    'Extended2023HGCal'   : 'Extended2023HGCal,Extended2023HGCalReco',
+    'Extended2023HGCal4Eta'   : 'Extended2023HGCal4Eta,Extended2023HGCal4EtaReco',
+    'Extended2023HGCalMuon'   : 'Extended2023HGCalMuon,Extended2023HGCalMuonReco',
+    'Extended2023HGCalMuon4Eta'   : 'Extended2023HGCalMuon4Eta,Extended2023HGCalMuon4EtaReco',
+    'Extended2023CFCal'   : 'Extended2023CFCal,Extended2023CFCalReco',
+    'Extended2023CFCal4Eta'   : 'Extended2023CFCal4Eta,Extended2023CFCal4EtaReco',
     'Extended2023RPCUpscope'   : 'Extended2023RPCUpscope,Extended2023RPCUpscopeReco',
+    'ExtendedPhase1Pixel10D'   : 'ExtendedPhase1Pixel10D,ExtendedPhase1Pixel10DReco',
     'ExtendedPhase2TkBE'   : 'ExtendedPhase2TkBE,ExtendedPhase2TkBEReco',
     'ExtendedPhase2TkBE5D'   : 'ExtendedPhase2TkBE5D,ExtendedPhase2TkBE5DReco',
     'ExtendedPhase2TkBE5DPixel10D'   : 'ExtendedPhase2TkBE5DPixel10D,ExtendedPhase2TkBE5DPixel10DReco',
+    'ExtendedPhase2TkBE5DPixel10DLHCC'   : 'ExtendedPhase2TkBE5DPixel10DLHCC,ExtendedPhase2TkBE5DPixel10DLHCCReco',
     'ExtendedPhase2TkLB_6PS'   : 'ExtendedPhase2TkLB6PS,ExtendedPhase2TkLB6PSReco',
     'ExtendedPhase2TkLB_4LPS_2L2S'   : 'ExtendedPhase2TkLB4LPS_2L2S,ExtendedPhase2TkLB4LPS_2L2SReco',
     'ExtendedGFlash' : 'ExtendedGFlash,ExtendedGFlashReco',
@@ -47,8 +63,9 @@ GeometryConf={
     'HCal'        : 'Configuration.Geometry.GeometrySimHCAL_cff,Configuration.Geometry.GeometryRecoHCAL_cff',
     'IdealAPD1'   : 'Configuration/StandardSequences/GeometryIdealAPD1_cff,Configuration/StandardSequences/GeometryIdeal_cff',
     'SLHC'        : 'Configuration.Geometry.GeometrySLHCSimIdeal_cff,Configuration.Geometry.GeometrySLHCReco_cff',
-    'Design'      : 'Design,DesignReco'
-    }
+    'Design'      : 'Design,DesignReco',
+    'Extended2023SHCalNoTaperNoExtPix'    : 'Extended2023SHCalNoTaperNoExtPix,Extended2023SHCalNoTaperNoExtPixReco',
+     }
 
 FastSimGeometryConf={
     'MC'                        : 'FastSimulation/Configuration/Geometries_MC_cff',

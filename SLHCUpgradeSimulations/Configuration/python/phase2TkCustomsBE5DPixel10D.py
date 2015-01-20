@@ -1,4 +1,6 @@
 import FWCore.ParameterSet.Config as cms
+import SLHCUpgradeSimulations.Configuration.customise_PFlow as customise_PFlow
+
 #GEN-SIM so far...
 def customise(process):
     if hasattr(process,'DigiToRaw'):
@@ -48,14 +50,16 @@ def customise_Digi(process):
     process.mix.digitizers.pixel.AddPixelInefficiencyFromPython = cms.bool(False)
     process.mix.digitizers.strip.ROUList = cms.vstring("g4SimHitsTrackerHitsPixelBarrelLowTof",
                          'g4SimHitsTrackerHitsPixelEndcapLowTof')
-    process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIBLowTof"))
-    process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIBHighTof"))
-    process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTOBLowTof"))
-    process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTOBHighTof"))
-    process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTECLowTof"))
-    process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTECHighTof"))
-    process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIDLowTof"))
-    process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIDHighTof"))
+    # Check if mergedtruth is in the sequence first, could be taken out depending on cmsDriver options
+    if hasattr(process.mix.digitizers,"mergedtruth") :    
+        process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIBLowTof"))
+        process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIBHighTof"))
+        process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTOBLowTof"))
+        process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTOBHighTof"))
+        process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTECLowTof"))
+        process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTECHighTof"))
+        process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIDLowTof"))
+        process.mix.digitizers.mergedtruth.simHitCollections.tracker.remove( cms.InputTag("g4SimHits","TrackerHitsTIDHighTof"))
     
     return process
 
@@ -79,40 +83,19 @@ def customise_Reco(process,pileup):
     process.MeasurementTracker.inactivePixelDetectorLabels = cms.VInputTag()
 
     # new layer list (3/4 pixel seeding) in InitialStep and pixelTracks
-    process.pixellayertriplets.layerList = cms.vstring( 'BPix1+BPix2+BPix3',
-                                                        'BPix2+BPix3+BPix4',
-                                                        'BPix1+BPix3+BPix4',
-                                                        'BPix1+BPix2+BPix4',
-                                                        'BPix2+BPix3+FPix1_pos',
-                                                        'BPix2+BPix3+FPix1_neg',
-                                                        'BPix1+BPix2+FPix1_pos',
-                                                        'BPix1+BPix2+FPix1_neg',
-                                                        'BPix2+FPix1_pos+FPix2_pos',
-                                                        'BPix2+FPix1_neg+FPix2_neg',
-                                                        'BPix1+FPix1_pos+FPix2_pos',
-                                                        'BPix1+FPix1_neg+FPix2_neg',
-                                                        'FPix1_pos+FPix2_pos+FPix3_pos',
-                                                        'FPix1_neg+FPix2_neg+FPix3_neg'
-                                                        # ale
-                                                        'BPix1+FPix1_pos+FPix3_pos',
-                                                        'BPix1+FPix1_neg+FPix3_neg',
-                                                        'BPix1+FPix2_pos+FPix3_pos',
-                                                        'BPix1+FPix2_neg+FPix3_neg',
-                                                        'BPix1+FPix3_pos+FPix4_pos',
-                                                        'BPix1+FPix3_neg+FPix4_neg',
-                                                        'FPix3_pos+FPix4_pos+FPix5_pos',
-                                                        'FPix3_neg+FPix4_neg+FPix5_neg',
-                                                        'FPix4_pos+FPix5_pos+FPix6_pos',
-                                                        'FPix4_neg+FPix5_neg+FPix6_neg',
-                                                        'FPix5_pos+FPix6_pos+FPix7_pos',
-                                                        'FPix5_neg+FPix6_neg+FPix7_neg',
-                                                        'FPix6_pos+FPix7_pos+FPix9_pos',
-                                                        'FPix6_neg+FPix7_neg+FPix9_neg',
-                                                        'FPix6_pos+FPix7_pos+FPix10_pos',
-                                                        'FPix6_neg+FPix7_neg+FPix10_neg',
-                                                        'FPix7_pos+FPix9_pos+FPix10_pos',
-                                                        'FPix7_neg+FPix9_neg+FPix10_neg'
-                                                        )
+    process.pixellayertriplets.layerList = cms.vstring('BPix1+BPix2+BPix3', 'BPix2+BPix3+BPix4',
+						       'BPix2+BPix3+FPix1_pos', 'BPix2+BPix3+FPix1_neg',
+						       'BPix1+BPix2+FPix1_pos', 'BPix1+BPix2+FPix1_neg',
+						       'BPix2+FPix1_pos+FPix2_pos', 'BPix2+FPix1_neg+FPix2_neg',
+						       'BPix1+FPix1_pos+FPix2_pos', 'BPix1+FPix1_neg+FPix2_neg',
+						       'BPix1+FPix2_pos+FPix3_pos', 'BPix1+FPix2_neg+FPix3_neg',
+						       'FPix1_pos+FPix2_pos+FPix3_pos', 'FPix1_neg+FPix2_neg+FPix3_neg',
+						       'FPix2_pos+FPix3_pos+FPix4_pos', 'FPix2_neg+FPix3_neg+FPix4_neg',
+						       'FPix3_pos+FPix4_pos+FPix5_pos', 'FPix3_neg+FPix4_neg+FPix5_neg',
+						       'FPix4_pos+FPix5_pos+FPix6_pos', 'FPix4_neg+FPix5_neg+FPix6_neg',
+						       'FPix5_pos+FPix6_pos+FPix7_pos', 'FPix5_neg+FPix6_neg+FPix7_neg',
+						       'FPix6_pos+FPix7_pos+FPix8_pos', 'FPix6_neg+FPix7_neg+FPix8_neg',
+						       'FPix6_pos+FPix7_pos+FPix9_pos', 'FPix6_neg+FPix7_neg+FPix9_neg')
 
     # New tracking.  This is really ugly because it redefines globalreco and reconstruction.
     # It can be removed if change one line in Configuration/StandardSequences/python/Reconstruction_cff.py
@@ -169,6 +152,18 @@ def customise_Reco(process,pileup):
     process.pixelseedmergerlayers.BPix.HitProducer = cms.string("siPixelRecHits" )
     process.pixelseedmergerlayers.FPix.TTRHBuilder = cms.string("PixelTTRHBuilderWithoutAngle" )
     process.pixelseedmergerlayers.FPix.HitProducer = cms.string("siPixelRecHits" )    
+    process.pixelseedmergerlayers.layerList = cms.vstring('BPix1+BPix2+BPix3+BPix4',
+						       'BPix1+BPix2+BPix3+FPix1_pos','BPix1+BPix2+BPix3+FPix1_neg',
+						       'BPix1+BPix2+FPix1_pos+FPix2_pos', 'BPix1+BPix2+FPix1_neg+FPix2_neg',
+						       'BPix1+FPix1_pos+FPix2_pos+FPix3_pos', 'BPix1+FPix1_neg+FPix2_neg+FPix3_neg',
+						       'FPix1_pos+FPix2_pos+FPix3_pos+FPix4_pos', 'FPix1_neg+FPix2_neg+FPix3_neg+FPix4_neg',
+						       'FPix2_pos+FPix3_pos+FPix4_pos+FPix5_pos', 'FPix2_neg+FPix3_neg+FPix4_neg+FPix5_neg',
+						       'FPix3_pos+FPix4_pos+FPix5_pos+FPix6_pos', 'FPix3_neg+FPix4_neg+FPix5_neg+FPix6_pos',
+						       'FPix4_pos+FPix5_pos+FPix6_pos+FPix7_pos', 'FPix4_neg+FPix5_neg+FPix6_neg+FPix7_neg',
+						       'FPix5_pos+FPix6_pos+FPix7_pos+FPix8_pos', 'FPix5_neg+FPix6_neg+FPix7_neg+FPix8_neg',
+						       'FPix5_pos+FPix6_pos+FPix7_pos+FPix9_pos', 'FPix5_neg+FPix6_neg+FPix7_neg+FPix9_neg',
+						       'FPix6_pos+FPix7_pos+FPix8_pos+FPix9_pos', 'FPix6_neg+FPix7_neg+FPix8_neg+FPix9_neg')
+    
     
     # Need these until pixel templates are used
     process.load("SLHCUpgradeSimulations.Geometry.recoFromSimDigis_cff")
@@ -191,7 +186,7 @@ def customise_Reco(process,pileup):
     process.cosmicsVetoTracksRaw.TTRHBuilder=cms.string('WithTrackAngle')
     # End of pixel template needed section
     
-    process.regionalCosmicTrackerSeeds.OrderedHitsFactoryPSet.LayerPSet.layerList  = cms.vstring('BPix10+BPix9')  # Optimize later
+    process.regionalCosmicTrackerSeeds.OrderedHitsFactoryPSet.LayerPSet.layerList  = cms.vstring('BPix9+BPix8')  # Optimize later
     process.regionalCosmicTrackerSeeds.OrderedHitsFactoryPSet.LayerPSet.BPix = cms.PSet(
         HitProducer = cms.string('siPixelRecHits'),
         hitErrorRZ = cms.double(0.006),
@@ -207,9 +202,14 @@ def customise_Reco(process,pileup):
         mergeTriplets = cms.bool(True),
         ttrhBuilderLabel = cms.string('PixelTTRHBuilderWithoutAngle')
         )
+    process.pixelTracks.OrderedHitsFactoryPSet.GeneratorPSet.maxElement = cms.uint32(0)
     process.pixelTracks.FilterPSet.chi2 = cms.double(50.0)
     process.pixelTracks.FilterPSet.tipMax = cms.double(0.05)
     process.pixelTracks.RegionFactoryPSet.RegionPSet.originRadius =  cms.double(0.02)
+
+    # Particle flow needs to know that the eta range has increased, for
+    # when linking tracks to HF clusters
+    process=customise_PFlow.customise_extendedTrackerBarrel( process )
 
     return process
 
@@ -279,11 +279,12 @@ def customise_DQM(process,pileup):
     process=customise_trackMon_IterativeTracking_PHASE1PU140(process)
     process.dqmoffline_step.remove(process.Phase1Pu70TrackMonStep2)
     process.dqmoffline_step.remove(process.Phase1Pu70TrackMonStep4)
-    process.globalrechitsanalyze.ROUList = cms.vstring(
-       'g4SimHitsTrackerHitsPixelBarrelLowTof', 
-       'g4SimHitsTrackerHitsPixelBarrelHighTof', 
-       'g4SimHitsTrackerHitsPixelEndcapLowTof', 
-       'g4SimHitsTrackerHitsPixelEndcapHighTof')
+    if hasattr(process,"globalrechitsanalyze") : # Validation takes this out if pileup is more than 30
+       process.globalrechitsanalyze.ROUList = cms.vstring(
+          'g4SimHitsTrackerHitsPixelBarrelLowTof', 
+          'g4SimHitsTrackerHitsPixelBarrelHighTof', 
+          'g4SimHitsTrackerHitsPixelEndcapLowTof', 
+          'g4SimHitsTrackerHitsPixelEndcapHighTof')
     return process
 
 def customise_Validation(process,pileup):

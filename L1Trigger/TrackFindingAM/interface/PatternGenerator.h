@@ -16,6 +16,7 @@ using namespace std;
 
 /**
    \brief Creates a pattern bank from root muons simulation files.
+   Each event contains only one track. To be used in the pattern creation, it must have at least one stub per used layer (except in the case of fake stubs). 
 **/
 class PatternGenerator{
  private:
@@ -27,32 +28,26 @@ class PatternGenerator{
   float etaMax;
   int nbMaxFakeSuperstrips;
   vector<int> tracker_layers;
+  vector<int> inactive_layers;
   string particuleDirName;
 
   // Containers to load the TTree branches
   int m_stub;
-  vector<int>                   m_stub_tp;  // tp of the particule
-  vector<int>                   m_stub_layer;  // Layer du stub (5 a 10 pour les 6 layers qui nous interessent)
-  vector<int>                   m_stub_module; // Position en Z du module contenant le stub
-  vector<int>                   m_stub_ladder; // Position en PHI du module contenant le stub
-  vector<int>                   m_stub_seg;    // Segment du module contenant le stub
-  vector<int>                   m_stub_strip;  // Strip du cluster interne du stub
-  vector<float>                 m_stub_pxGEN;  // Px de la particule initiale (en GeV/c)
-  vector<float>                 m_stub_pyGEN;  // Py de la particule initiale (en GeV/c)
+  vector<int>                   m_stub_modid;  // Layer du stub (5 a 10 pour les 6 layers qui nous interessent)
+  vector<float>                 m_stub_strip;  // Strip du cluster interne du stub
+  vector<float>                 m_stub_ptGEN;  // PT de la particule initiale
   vector<float>                 m_stub_etaGEN;  // Eta de la particule initiale
 
-  vector<int>                   *p_m_stub_tp;
-  vector<int>                   *p_m_stub_layer;
-  vector<int>                   *p_m_stub_module;
-  vector<int>                   *p_m_stub_ladder;
-  vector<int>                   *p_m_stub_seg;
-  vector<int>                   *p_m_stub_strip;
-  vector<float>                 *p_m_stub_pxGEN;
-  vector<float>                 *p_m_stub_pyGEN;
+  vector<int>                   *p_m_stub_modid;
+  vector<float>                 *p_m_stub_strip;
+  vector<float>                 *p_m_stub_ptGEN;
   vector<float>                 *p_m_stub_etaGEN;
 
   TChain* createTChain(string directoryName, string tchainName);
-  int generate(TChain* TT, int* evtIndex, int evtNumber, int* nbTrack, SectorTree* sectors, map<int,pair<float,float> > eta_limits);
+  /**
+     If coverageEstimation!=NULL we do not create patterns, we just test the coverage of the existing bank with new tracks
+   **/
+  int generate(TChain* TT, int* evtIndex, int evtNumber, int* nbTrack, SectorTree* sectors, map<int,pair<float,float> > eta_limits, int* coverageEstimation=NULL);
   
  public:
  /**
@@ -88,7 +83,7 @@ class PatternGenerator{
   void setMaxEta(float maxe);
   /**
      \brief Change the maximum number of fake superstrips that can be used in a pattern
-     \param maxe The maximum number of fakse superstrips in a pattern
+     \param mf The maximum number of fake superstrips in a pattern
   **/
   void setMaxFakeSuperstrips(int mf);
  /**
@@ -96,6 +91,11 @@ class PatternGenerator{
      \param l A vector of int, each integer is a layer number (ex : 8 9 10 for the last 3 layers)
   **/
   void setLayers(vector<int> l);
+ /**
+     \brief Sets the inactive layers (will have only fake stubs but will be present in the bank)
+     \param l A vector of int, each integer is a layer number (ex : 8 9 10 for the last 3 layers)
+  **/
+  void setInactiveLayers(vector<int> l);
   /**
      \brief Set the name of the directory containing the root files with muons informations
      \param f The name of the directory

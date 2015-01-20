@@ -3,6 +3,8 @@
 // Description: Sensitive Detector class for Combined Forward Calorimeter
 ///////////////////////////////////////////////////////////////////////////////
 
+#include "DataFormats/Math/interface/FastMath.h"
+
 #include "SimG4CMS/Calo/interface/HGCSD.h"
 #include "SimG4Core/Notification/interface/TrackInformation.h"
 #include "DetectorDescription/Core/interface/DDFilter.h"
@@ -18,12 +20,13 @@
 #include "G4Track.hh"
 #include "G4ParticleTable.hh"
 #include "G4VProcess.hh"
+#include "G4Trap.hh"
 
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 
-#define DebugLog
+//#define DebugLog
 
 HGCSD::HGCSD(G4String name, const DDCompactView & cpv,
 	     SensitiveDetectorCatalog & clg, 
@@ -35,6 +38,23 @@ HGCSD::HGCSD(G4String name, const DDCompactView & cpv,
 
   edm::ParameterSet m_HGC = p.getParameter<edm::ParameterSet>("HGCSD");
   eminHit          = m_HGC.getParameter<double>("EminHit")*MeV;
+  bool checkID     = m_HGC.getUntrackedParameter<bool>("CheckID", false);
+  verbosity        = m_HGC.getUntrackedParameter<int>("Verbosity",0);
+
+  //this is defined in the hgcsens.xml
+  G4String myName(this->nameOfSD());
+  myFwdSubdet_= ForwardSubdetector::ForwardEmpty;
+  std::string nameX("HGCal");
+  if (myName.find("HitsEE")!=std::string::npos) {
+    myFwdSubdet_ = ForwardSubdetector::HGCEE;
+    nameX        = "HGCalEESensitive";
+  } else if (myName.find("HitsHEfront")!=std::string::npos) {
+    myFwdSubdet_ = ForwardSubdetector::HGCHEF;
+    nameX        = "HGCalHESiliconSensitive";
+  } else if (myName.find("HitsHEback")!=std::string::npos) {
+    myFwdSubdet_ = ForwardSubdetector::HGCHEB;
+    nameX        = "HGCalHEScintillatorSensitive";
+  }
 
 #ifdef DebugLog
   LogDebug("HGCSim") << "**************************************************" 
@@ -48,20 +68,7 @@ HGCSD::HGCSD(G4String name, const DDCompactView & cpv,
 #endif
   edm::LogInfo("HGCSim") << "HGCSD:: Threshold for storing hits: " << eminHit;
 
-  std::string attribute, value;
-  // Constants for Numbering Scheme
-  attribute = "Volume";
-  value     = "HGC";
-  DDSpecificsFilter filter0;
-  DDValue           ddv0(attribute, value, 0);
-  filter0.setCriteria(ddv0, DDSpecificsFilter::equals);
-  DDFilteredView fv0(cpv);
-  fv0.addFilter(filter0);
-  fv0.firstChild();
-  DDsvalues_type sv0(fv0.mergedSpecifics());
-
-  gpar    = getDDDArray("GeomParHGC",sv0);
-  numberingScheme = new HGCNumberingScheme(gpar);
+  numberingScheme = new HGCNumberingScheme(cpv,nameX,checkID,verbosity);
 }
 
 HGCSD::~HGCSD() { 
@@ -75,9 +82,9 @@ bool HGCSD::ProcessHits(G4Step * aStep, G4TouchableHistory * ) {
   if (aStep == NULL) {
     return true;
   } else {
+#ifdef DebugLog
     G4int parCode = aStep->GetTrack()->GetDefinition()->GetPDGEncoding();
     bool notaMuon = (parCode == mupPDG || parCode == mumPDG ) ? false : true;
-#ifdef DebugLog
     G4LogicalVolume* lv =
       aStep->GetPreStepPoint()->GetPhysicalVolume()->GetLogicalVolume();
     edm::LogInfo("HGCSim") << "HGCSD: Hit from standard path from "
@@ -102,15 +109,24 @@ uint32_t HGCSD::setDetUnitId(G4Step * aStep) {
 
   G4StepPoint* preStepPoint = aStep->GetPreStepPoint(); 
   const G4VTouchable* touch = preStepPoint->GetTouchable();
+
+  //determine the exact position in global coordinates in the mass geometry 
   G4ThreeVector hitPoint    = preStepPoint->GetPosition();
+  float globalZ=touch->GetTranslation(0).z();
+  int iz( globalZ>0 ? 1 : -1);
 
+  //convert to local coordinates (=local to the current volume): 
   G4ThreeVector localpos = touch->GetHistory()->GetTopTransform().TransformPoint(hitPoint);
-  int iz     = (hitPoint.z() > 0) ? 1 : -1;
-  int subdet = (touch->GetReplicaNumber(4));
-  int module = (touch->GetReplicaNumber(3));
-  int layer  = (touch->GetReplicaNumber(2));
+  
+  //get the det unit id with 
+  ForwardSubdetector subdet = myFwdSubdet_;
 
-  return setDetUnitId (subdet, localpos, iz, module, layer);
+  int layer  = touch->GetReplicaNumber(0);
+  int module = touch->GetReplicaNumber(1);
+  if (verbosity > 0) 
+    std::cout << "HGCSD::Global " << hitPoint << " local " << localpos 
+	      << std::endl;
+  return setDetUnitId (subdet, layer, module, iz, localpos);
 }
 
 void HGCSD::initRun() {
@@ -129,40 +145,12 @@ bool HGCSD::filterHit(CaloG4Hit* aHit, double time) {
 }
 
 
-uint32_t HGCSD::setDetUnitId (int subdet, G4ThreeVector pos, int iz, int mod, 
-			      int layer) {
-  uint32_t id = 0;
-  //get the ID
-  if (numberingScheme) id = numberingScheme->getUnitID(subdet, pos, iz, mod, 
-						       layer);
-  return id;
+//
+uint32_t HGCSD::setDetUnitId (ForwardSubdetector &subdet, int &layer, int &module, int &iz, G4ThreeVector &pos) {  
+  return (numberingScheme ? numberingScheme->getUnitID(subdet, layer, module, iz, pos) : 0);
 }
 
-std::vector<double> HGCSD::getDDDArray(const std::string & str,
-                                        const DDsvalues_type & sv) {
-#ifdef DebugLog
-  LogDebug("HGCSim") << "HGCSD:getDDDArray called for " << str;
-#endif
-  DDValue value(str);
-  if (DDfetch(&sv,value)) {
-#ifdef DebugLog
-    LogDebug("HGCSim") << value;
-#endif
-    const std::vector<double> & fvec = value.doubles();
-    int nval = fvec.size();
-    if (nval < 1) {
-      edm::LogError("HGCSim") << "HGCSD : # of " << str << " bins " << nval
-			      << " < 2 ==> illegal";
-      throw cms::Exception("Unknown", "HGCSD") << "nval < 2 for array " << str << "\n";
-    }
-    
-    return fvec;
-  } else {
-    edm::LogError("HGCSim") << "HGCSD :  cannot get array " << str;
-    throw cms::Exception("Unknown", "HGCSD") << "cannot get array " << str << "\n";
-  }
-}
-
+//
 int HGCSD::setTrackID (G4Step* aStep) {
   theTrack     = aStep->GetTrack();
 
