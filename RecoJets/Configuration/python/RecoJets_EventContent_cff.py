@@ -36,7 +36,7 @@ RecoJetsFEVT = cms.PSet(
                                            'keep *_JetPlusTrackZSPCorJetAntiKt4_*_*',
                                            'keep *_ak4TrackJets_*_*',
                                            'keep *_kt4TrackJets_*_*',
-                                           'keep *_ak7BasicJets_*_*',
+                                           'keep *_ak7CastorJets_*_*',
                                            'keep *_ak7CastorJetID_*_*',
                                            'keep *_fixedGridRho*_*_*',
                                            'keep *_ca*Links_*_*',
@@ -62,7 +62,6 @@ RecoJetsRECO = cms.PSet(
                                            'keep *_ak8PFJets_*_*',                                           
                                            'keep *_ak4PFJetsCHS_*_*',
                                            'keep *_ak5PFJetsCHS_*_*',
-                                           'keep *_ak8PFJetsCHS_*_*',
                                            'keep *_ak8PFJetsCHS_*_*',
                                            'keep *_ak8PFJetsCHSPruned_*_*',                                           
                                            'keep *_ak8PFJetsCHSSoftDrop_*_*',                                           
@@ -91,7 +90,7 @@ RecoJetsRECO = cms.PSet(
                                            'keep *_ak4JetID_*_*','keep *_ak5JetID_*_*','keep *_ak7JetID_*_*',
                                            'keep *_ic5JetID_*_*',
                                            'keep *_kt4JetID_*_*','keep *_kt6JetID_*_*',
-                                           'keep *_ak7BasicJets_*_*',
+                                           'keep *_ak7CastorJets_*_*',
                                            'keep *_ak7CastorJetID_*_*',
                                            'keep double_kt6CaloJetsCentral_*_*',
                                            'keep double_kt6PFJetsCentralChargedPileUp_*_*',
@@ -108,7 +107,9 @@ RecoGenJetsRECO = cms.PSet(
                                            'keep *_ak4GenJets_*_*',
                                            'keep *_ak5GenJets_*_*',
                                            'keep *_ak7GenJets_*_*',
-                                           'keep *_iterativeCone5GenJets_*_*',
+                                           'keep *_ak8GenJets_*_*',
+                                           'keep *_ak4GenJetsNoNu_*_*',
+                                           'keep *_ak8GenJetsNoNu_*_*',
                                            'keep *_genParticle_*_*')
     )
 #AOD content
@@ -157,7 +158,7 @@ RecoJetsAOD = cms.PSet(
                                            #        'keep *_ak7JetID_*_*',
                                            #        'keep *_ic5JetID_*_*',
                                            #        'keep *_kt4JetID_*_*','keep *_kt6JetID_*_*',
-                                           #'keep *_ak7BasicJets_*_*',
+                                           #'keep *_ak7CastorJets_*_*',
                                            #'keep *_ak7CastorJetID_*_*',
                                            'keep double_kt6CaloJetsCentral_*_*',
                                            'keep double_kt6PFJetsCentralChargedPileUp_*_*',
@@ -176,7 +177,8 @@ RecoGenJetsAOD = cms.PSet(
                                            'keep *_ak4GenJets_*_*',
                                            'keep *_ak5GenJets_*_*',
                                            'keep *_ak8GenJets_*_*',
-                                           #        'keep *_iterativeCone5GenJets_*_*', 
+                                           'keep *_ak4GenJetsNoNu_*_*',
+                                           'keep *_ak8GenJetsNoNu_*_*',
                                            'keep *_genParticle_*_*'
                                            )
     )

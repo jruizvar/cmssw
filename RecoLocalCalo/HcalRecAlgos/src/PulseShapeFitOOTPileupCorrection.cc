@@ -163,17 +163,15 @@ namespace FitterFuncs{
         chisq += (psFit_y[i]- pulse_shape_sum_[i])*(psFit_y[i]- pulse_shape_sum_[i])/psFit_erry2[i];
 
       if(pedestalConstraint_) {
-	for (i=0;i<nbins; ++i) {
-	  //Add the pedestal Constraint to chi2
-          chisq += invertpedSig2_*(pars[nPars-1] - pedMean_)*(pars[nPars-1]- pedMean_);
-        }
+	 //Add the pedestal Constraint to chi2
+         chisq += invertpedSig2_*(pars[nPars-1] - pedMean_)*(pars[nPars-1]- pedMean_);
       }
         //Add the time Constraint to chi2
       if(timeConstraint_) {
 	for(j=0; j< parBy2; ++j ){
 	  int time = (pars[j*2]+timeShift_)*(double)HcalConst::invertnsPerBx;
 	  double time1 = -100.+time*HcalConst::nsPerBX;
-	  chisq += nbins*(inverttimeSig2_*(pars[j*2] - timeMean_ - time1)*(pars[j*2] - timeMean_ - time1));
+	  chisq += inverttimeSig2_*(pars[j*2] - timeMean_ - time1)*(pars[j*2] - timeMean_ - time1);
 	}
       }
       return chisq;
