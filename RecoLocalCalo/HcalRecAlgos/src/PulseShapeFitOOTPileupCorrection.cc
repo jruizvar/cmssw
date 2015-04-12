@@ -54,7 +54,7 @@ namespace FitterFuncs{
     pedSig_             = iPedSig;
     noise_              = iNoise;
     timeShift_          = 100.;
-    if(iAddTimeSlew) timeShift_ += 13.;//Please note 13 is approximation for the time slew => we are trying to get BX 
+    timeShift_ += 12.5;//we are trying to get BX 
 
     inverttimeSig_ = 1./timeSig_;
     inverttimeSig2_ = inverttimeSig_*inverttimeSig_;
@@ -113,7 +113,7 @@ namespace FitterFuncs{
       double delta2 =0;
       std::array<float,HcalConst::maxSamples> pulse_shape_sum;
       for(i=0; i < (pars.size()-1)/2; ++i ){
-         int time = (pars[i*2]+timeShift_)*HcalConst::invertnsPerBx;
+         int time = (pars[i*2]+timeShift_-timeMean_)*HcalConst::invertnsPerBx;
          //Interpolate the fit (Quickly)
          std::array<float,HcalConst::maxSamples> pulse_shape;
          funcHPDShape(pulse_shape, pars[i*2],pars[i*2+1],psFit_slew[time]);
@@ -140,7 +140,7 @@ namespace FitterFuncs{
       //Add the time Constraint to chi2
       if(timeConstraint_) {
 	for(j=0; j< (pars.size()-1)/2; ++j ){
-	  int time = (pars[j*2]+timeShift_)/(double)HcalConst::nsPerBX;
+	  int time = (pars[j*2]+timeShift_-timeMean_)/(double)HcalConst::nsPerBX;
 	  double time1 = -100.+time*HcalConst::nsPerBX;
 	  chisq += inverttimeSig2_*(pars[j*2] - timeMean_ - time1)*(pars[j*2] - timeMean_ - time1);
 	}
@@ -274,7 +274,7 @@ void PulseShapeFitOOTPileupCorrection::apply(const CaloSamples & cs, const std::
    }
    if( tsTOTen < 0. ) tsTOTen = pedSig_;
    std::vector<double> fitParsVec;
-   if( tstrig >= ts4Min_ && tstrig <ts4Max_ ) { //Two sigma from 0 
+   if( tstrig >= ts4Min_ ) { //Two sigma from 0 
      pulseShapeFit(energyArr, pedenArr, chargeArr, pedArr, gainArr, tsTOTen, fitParsVec);
 //     double time = fitParsVec[1], ampl = fitParsVec[0], uncorr_ampl = fitParsVec[0];
    }
@@ -287,6 +287,7 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    double tsMAX=0;
    int    nAboveThreshold = 0;
    double tmpx[HcalConst::maxSamples], tmpy[HcalConst::maxSamples], tmperry[HcalConst::maxSamples],tmperry2[HcalConst::maxSamples],tmpslew[HcalConst::maxSamples];
+   double tstrig = 0; // in fC
    for(int i=0;i<HcalConst::maxSamples;++i){
       tmpx[i]=i;
       tmpy[i]=energyArr[i]-pedenArr[i];
@@ -302,6 +303,9 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
       //Add the Uncosntrained Double Pulse Switch
       if((chargeArr[i])>chargeThreshold_) nAboveThreshold++;
       if(std::abs(energyArr[i])>tsMAX) tsMAX=std::abs(tmpy[i]);
+      if( i ==4 || i ==5 ){
+         tstrig += chargeArr[i] - pedArr[i];
+      }
    }
    psfPtr_->setpsFitx    (tmpx);
    psfPtr_->setpsFity    (tmpy);
@@ -320,7 +324,8 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    if(ts4Chi2_ != 0) fit(1,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
 // Based on the pulse shape ( 2. likely gives the same performance )
    if(tmpy[2] > 3.*tmpy[3]) BX[2] = 2;
-   if(chi2 > ts4Chi2_ && !unConstrainedFit_)   { //fails chi2 cut goes straight to 3 Pulse fit
+// Only do three-pulse fit when tstrig < ts4Max_, otherwise one-pulse fit is used (above)
+   if(chi2 > ts4Chi2_ && !unConstrainedFit_ && tstrig < ts4Max_)   { //fails chi2 cut goes straight to 3 Pulse fit
      fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
    }
    if(unConstrainedFit_ && nAboveThreshold > 5) { //For the old method 2 do double pulse fit if values above a threshold
@@ -333,7 +338,7 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    }
    */
    //Fix back the timeslew
-   if(applyTimeSlew_) timevalfit+=HcalTimeSlew::delay(std::max(1.0,chargeArr[4]),slewFlavor_);
+   //if(applyTimeSlew_) timevalfit+=HcalTimeSlew::delay(std::max(1.0,chargeArr[4]),slewFlavor_);
    int outfitStatus = (fitStatus ? 1: 0 );
    fitParsVec.clear();
    fitParsVec.push_back(chargevalfit);
