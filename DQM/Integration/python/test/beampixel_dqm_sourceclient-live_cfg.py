@@ -27,7 +27,7 @@ process.dqmEnv.subSystemFolder = "BeamPixel"
 #----------------------------
 # Sub-system Configuration
 #----------------------------
-process.load("Configuration.StandardSequences.Geometry_cff")
+process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 process.load('Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff')
 process.load("Configuration.StandardSequences.RawToDigi_Data_cff")
 process.load("DQM.Integration.test.FrontierCondition_GT_cfi")
@@ -40,6 +40,11 @@ process.dqmmodules  = cms.Sequence(process.dqmEnv + process.dqmSaver)
 process.phystrigger = cms.Sequence(process.hltTriggerTypeFilter)
 
 
+#----------------------------
+# Process Customizations
+#----------------------------
+from DQM.Integration.test.online_customizations_cfi import *
+process = customise(process)
 
 
 #----------------------------
@@ -80,9 +85,9 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
                                             # If the histogram has at least "minNentries" then extract Mean and RMS,
                                             # or, if we are performing the fit, the number of vertices must be greater
                                             # than minNentries otherwise it waits for other nLumiReset
-                                            xRange             = cms.double(2.0),
+                                            xRange             = cms.double(1.0),
                                             xStep              = cms.double(0.001),
-                                            yRange             = cms.double(2.0),
+                                            yRange             = cms.double(1.0),
                                             yStep              = cms.double(0.001),
                                             zRange             = cms.double(30.0),
                                             zStep              = cms.double(0.05),
@@ -159,9 +164,9 @@ if (process.runType.getRunType() == process.runType.hi_run):
                                             # If the histogram has at least "minNentries" then extract Mean and RMS,
                                             # or, if we are performing the fit, the number of vertices must be greater
                                             # than minNentries otherwise it waits for other nLumiReset
-                                            xRange             = cms.double(2.0),
+                                            xRange             = cms.double(1.0),
                                             xStep              = cms.double(0.001),
-                                            yRange             = cms.double(2.0),
+                                            yRange             = cms.double(1.0),
                                             yStep              = cms.double(0.001),
                                             zRange             = cms.double(30.0),
                                             zStep              = cms.double(0.05),
@@ -191,3 +196,4 @@ if (process.runType.getRunType() == process.runType.hi_run):
     # Define Path
     #----------------------------
     process.p = cms.Path(process.phystrigger*process.reconstruction_step*process.pixelVertexDQM*process.dqmmodules)
+    

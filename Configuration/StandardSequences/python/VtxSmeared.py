@@ -26,6 +26,7 @@ VtxSmeared = {
     'Realistic2p76TeV2011Collision': 'IOMC.EventVertexGenerators.VtxSmearedRealistic2p76TeV2011Collision_cfi',
     'Realistic2p76TeV2013Collision': 'IOMC.EventVertexGenerators.VtxSmearedRealistic2p76TeV2013Collision_cfi',
     'Centered7TeV2011Collision':     'IOMC.EventVertexGenerators.VtxSmearedCentered7TeV2011Collision_cfi',
+    'RealisticHI2011Collision':      'IOMC.EventVertexGenerators.VtxSmearedRealisticHI2011Collision_cfi',
     'Realistic5TeVPPbBoost':         'GeneratorInterface.HiGenCommon.VtxSmearedRealistic5TeVPPbBoost_cff',
     'Realistic5TeVPPbBoostReversed': 'GeneratorInterface.HiGenCommon.VtxSmearedRealistic5TeVPPbBoostReversed_cff',
     'MatchHI':                       'GeneratorInterface.HiGenCommon.VtxSmearedMatchHI_cff',
@@ -36,5 +37,5 @@ VtxSmeared = {
     'NominalCollision2015'  :        'IOMC.EventVertexGenerators.VtxSmearedNominalCollision2015_cfi'
 
 }
-VtxSmearedDefaultKey='Realistic8TeVCollision'
+VtxSmearedDefaultKey='NominalCollision2015'
 VtxSmearedHIDefaultKey='RealisticHI2011Collision'

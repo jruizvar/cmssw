@@ -28,7 +28,6 @@ defaultOptions.useCondDBv1 = False
 defaultOptions.scenarioOptions=['pp','cosmics','nocoll','HeavyIons']
 defaultOptions.harvesting= 'AtRunEnd'
 defaultOptions.gflash = False
-defaultOptions.himix = False
 defaultOptions.number = -1
 defaultOptions.number_out = None
 defaultOptions.arguments = ""
@@ -160,13 +159,23 @@ def MassReplaceInputTag(aProcess,oldT="rawDataCollector",newT="rawDataRepacker")
 	for s in aProcess.paths_().keys():
 		massSearchReplaceAnyInputTag(getattr(aProcess,s),oldT,newT)
 
+def anyOf(listOfKeys,dict,opt=None):
+	for k in listOfKeys:
+		if k in dict:
+			toReturn=dict[k]
+			dict.pop(k)
+			return toReturn
+	if opt!=None:
+		return opt
+	else:
+		raise Exception("any of "+','.join(listOfKeys)+" are mandatory entries of --output options")
 
 class ConfigBuilder(object):
     """The main building routines """
 
     def __init__(self, options, process = None, with_output = False, with_input = False ):
         """options taken from old cmsDriver and optparse """
-
+	    
         options.outfile_name = options.dirout+options.fileout
 
         self._options = options
@@ -176,8 +185,18 @@ class ConfigBuilder(object):
         #if not self._options.conditions:
         #        raise Exception("ERROR: No conditions given!\nPlease specify conditions. E.g. via --conditions=IDEAL_30X::All")
 
-	if hasattr(self._options,"datatier") and self._options.datatier and 'DQMIO' in self._options.datatier and 'ENDJOB' in self._options.step:
-		self._options.step=self._options.step.replace(',ENDJOB','')
+	# check that MEtoEDMConverter (running in ENDJOB) and DQMIO don't run in the same job
+	if 'ENDJOB' in self._options.step:
+		if  (hasattr(self._options,"outputDefinition") and \
+		    self._options.outputDefinition != '' and \
+		    any(anyOf(['t','tier','dataTier'],outdic) == 'DQMIO' for outdic in eval(self._options.outputDefinition))) or \
+		    (hasattr(self._options,"datatier") and \
+		    self._options.datatier and \
+		    'DQMIO' in self._options.datatier):
+			print "removing ENDJOB from steps since not compatible with DQMIO dataTier" 
+			self._options.step=self._options.step.replace(',ENDJOB','')
+
+
 		
         # what steps are provided by this class?
         stepList = [re.sub(r'^prepare_', '', methodName) for methodName in ConfigBuilder.__dict__ if methodName.startswith('prepare_')]
@@ -429,10 +448,6 @@ class ConfigBuilder(object):
         if 'GEN' in self.stepMap.keys() or 'LHE' in self.stepMap or (not self._options.filein and hasattr(self._options, "evt_type")):
             if self.process.source is None:
                 self.process.source=cms.Source("EmptySource")
-            # if option himix is active, drop possibly duplicate DIGI-RAW info:
-            if self._options.himix==True:
-                self.process.source.inputCommands = cms.untracked.vstring('drop *','keep *_generator_*_*','keep *_g4SimHits_*_*')
-                self.process.source.dropDescendantsOfDroppedBranches=cms.untracked.bool(False)
 
 	# modify source in case of run-dependent MC
 	self.runsAndWeights=None
@@ -463,18 +478,7 @@ class ConfigBuilder(object):
 	if self._options.outputDefinition:
 		if self._options.datatier:
 			print "--datatier & --eventcontent options ignored"
-			
-		def anyOf(listOfKeys,dict,opt=None):
-			for k in listOfKeys:
-				if k in dict:
-					toReturn=dict[k]
-					dict.pop(k)
-					return toReturn
-			if opt!=None:
-				return opt
-			else:
-				raise Exception("any of "+','.join(listOfKeys)+" are mandatory entries of --output options")
-				
+							
 		#new output convention with a list of dict
 		outList = eval(self._options.outputDefinition)
 		for (id,outDefDict) in enumerate(outList):
@@ -637,9 +641,22 @@ class ConfigBuilder(object):
         # load the pile up file
 	if self._options.pileup:
 		pileupSpec=self._options.pileup.split(',')[0]
+
+		# FastSim: GEN-mixing or DIGI-RECO mixing?
+		GEN_mixing = False
+		if self._options.fast and pileupSpec.find("GEN_") == 0:
+                        GEN_mixing = True
+                        pileupSpec = pileupSpec[4:]
+
+		# Does the requested pile-up scenario exist?
 		from Configuration.StandardSequences.Mixing import Mixing,defineMixing
 		if not pileupSpec in Mixing and '.' not in pileupSpec and 'file:' not in pileupSpec:
-			raise Exception(pileupSpec+' is not a know mixing scenario:\n available are: '+'\n'.join(Mixing.keys()))
+			message = pileupSpec+' is not a know mixing scenario:\n available are: '+'\n'.join(Mixing.keys())
+			if self._options.fast:
+				message += "\n-"*20+"\n additional options for FastSim (gen-mixing):\n" + "-"*20 + "\n" + '\n'.join(["GEN_" + x for x in Mixing.keys()]) + "\n"
+			raise Exception(message)
+
+		# Put mixing parameters in a dictionary
 		if '.' in pileupSpec:
 			mixingDict={'file':pileupSpec}
 		elif pileupSpec.startswith('file:'):
@@ -649,6 +666,8 @@ class ConfigBuilder(object):
 			mixingDict=copy.copy(Mixing[pileupSpec])
 		if len(self._options.pileup.split(','))>1:
 			mixingDict.update(eval(self._options.pileup[self._options.pileup.find(',')+1:]))
+
+		# Load the pu cfg file corresponding to the requested pu scenario
 		if 'file:' in pileupSpec:
 			#the file is local
 			self.process.load(mixingDict['file'])
@@ -656,8 +675,13 @@ class ConfigBuilder(object):
 			self._options.inlineObjets+=',mix'
 		else:
 			self.loadAndRemember(mixingDict['file'])
-			if self._options.fast:
-				self._options.customisation_file.append("FastSimulation/Configuration/MixingModule_Full2Fast.setVertexGeneratorPileUpProducer")
+
+		# FastSim: transform cfg of MixingModule from FullSim to FastSim 
+		if self._options.fast:
+			if GEN_mixing:
+				self._options.customisation_file.insert(0,"FastSimulation/Configuration/MixingModule_Full2Fast.prepareGenMixing")
+			else:   
+				self._options.customisation_file.insert(0,"FastSimulation/Configuration/MixingModule_Full2Fast.prepareDigiRecoMixing")
 
 		mixingDict.pop('file')
 		if not "DATAMIX" in self.stepMap.keys(): # when DATAMIX is present, pileup_input refers to pre-mixed GEN-RAW
@@ -666,14 +690,11 @@ class ConfigBuilder(object):
 					mixingDict['F']=filesFromDASQuery('file dataset = %s'%(self._options.pileup_input[4:],))[0]
 				else:
 					mixingDict['F']=self._options.pileup_input.split(',')
-			specialization=defineMixing(mixingDict,self._options.fast)
+			specialization=defineMixing(mixingDict)
 			for command in specialization:
 				self.executeAndRemember(command)
 			if len(mixingDict)!=0:
 				raise Exception('unused mixing specification: '+mixingDict.keys().__str__())
-
-			if self._options.fast and not 'SIM' in self.stepMap and not 'FASTSIM' in self.stepMap:
-				self.executeAndRemember('process.mix.playback= True')
 
 
         # load the geometry file
@@ -985,18 +1006,10 @@ class ConfigBuilder(object):
             self.RECODefaultSeq='reconstructionCosmics'
             self.DQMDefaultSeq='DQMOfflineCosmics'
 
-        if self._options.himix:
-                print "From the presence of the himix option, we have determined that this is heavy ions and will use '--scenario HeavyIons'."
-                self._options.scenario='HeavyIons'
-
         if self._options.scenario=='HeavyIons':
 	    if not self._options.beamspot:
 		    self._options.beamspot=VtxSmearedHIDefaultKey
             self.HLTDefaultSeq = 'HIon'
-            if not self._options.himix:
-                    self.GENDefaultSeq='pgen_hi'
-            else:
-                    self.GENDefaultSeq='pgen_himix'
             self.VALIDATIONDefaultCFF="Configuration/StandardSequences/ValidationHeavyIons_cff"
             self.VALIDATIONDefaultSeq=''
             self.EVTCONTDefaultCFF="Configuration/EventContent/EventContentHeavyIons_cff"
@@ -1085,21 +1098,16 @@ class ConfigBuilder(object):
 
         # Mixing
 	if self._options.pileup=='default':
-		from Configuration.StandardSequences.Mixing import MixingDefaultKey,MixingFSDefaultKey
+		from Configuration.StandardSequences.Mixing import MixingDefaultKey
+		self._options.pileup=MixingDefaultKey
+		# temporary, until digi-reco mixing becomes standard in RelVals
 		if self._options.fast:
-			self._options.pileup=MixingFSDefaultKey
-		else:
-			self._options.pileup=MixingDefaultKey
-			
+			self._options.pileup="GEN_" + MixingDefaultKey
+		
+
 	#not driven by a default cff anymore
 	if self._options.isData:
 		self._options.pileup=None
-        if self._options.isMC==True and self._options.himix==False:
-                if self._options.fast:
-			self._options.pileup='FS_'+self._options.pileup
-        elif self._options.isMC==True and self._options.himix==True:
-		self._options.pileup='HiMix'
-
 
 	if self._options.slhc:
 		self.GeometryCFF='SLHCUpgradeSimulations.Geometry.%s_cmsSimIdealGeometryXML_cff'%(self._options.slhc,)
@@ -1339,8 +1347,8 @@ class ConfigBuilder(object):
 				elif isinstance(theObject, cms.Sequence) or isinstance(theObject, cmstypes.ESProducer):
 					self._options.inlineObjets+=','+name
 
-		if sequence == self.GENDefaultSeq or sequence == 'pgen_genonly' or ( sequence == 'pgen_himix' or sequence == 'pgen_hi'):
-			if 'ProductionFilterSequence' in genModules and ('generator' in genModules or 'hiSignal' in genModules):
+		if sequence == self.GENDefaultSeq or sequence == 'pgen_genonly':
+			if 'ProductionFilterSequence' in genModules and ('generator' in genModules):
 				self.productionFilterSequence = 'ProductionFilterSequence'
 			elif 'generator' in genModules:
 				self.productionFilterSequence = 'generator'
@@ -1357,8 +1365,11 @@ class ConfigBuilder(object):
                 except ImportError:
                         raise Exception("VertexSmearing type or beamspot "+self._options.beamspot+" unknown.")
 
-                if self._options.scenario == 'HeavyIons' and self._options.himix:
-                        self.loadAndRemember("SimGeneral/MixingModule/himixGEN_cff")
+                if self._options.scenario == 'HeavyIons': 
+			if self._options.pileup=='HiMixGEN':
+				self.loadAndRemember("Configuration/StandardSequences/GeneratorMix_cff")
+			else:
+				self.loadAndRemember("Configuration/StandardSequences/GeneratorHI_cff")
 
         self.process.generation_step = cms.Path( getattr(self.process,genSeqName) )
         self.schedule.append(self.process.generation_step)
@@ -1385,12 +1396,6 @@ class ConfigBuilder(object):
 
 		if self._options.magField=='0T':
 			self.executeAndRemember("process.g4SimHits.UseMagneticField = cms.bool(False)")
-
-		if self._options.himix==True:
-			if self._options.geometry in defaultOptions.geometryExtendedOptions:
-				self.loadAndRemember("SimGeneral/MixingModule/himixSIMExtended_cff")
-			else:
-				self.loadAndRemember("SimGeneral/MixingModule/himixSIMIdeal_cff")
 	else:
 		if self._options.magField=='0T':
 			self.executeAndRemember("process.famosSimHits.UseMagneticField = cms.bool(False)")
@@ -1405,11 +1410,15 @@ class ConfigBuilder(object):
         if self._options.gflash==True:
                 self.loadAndRemember("Configuration/StandardSequences/GFlashDIGI_cff")
 
-        if self._options.himix==True:
-            self.loadAndRemember("SimGeneral/MixingModule/himixDIGI_cff")
-
         if sequence == 'pdigi_valid':
             self.executeAndRemember("process.mix.digitizers = cms.PSet(process.theDigitizersValid)")
+
+	if sequence != 'pdigi_nogen' and sequence != 'pdigi_valid_nogen' and not self.process.source.type_()=='EmptySource':
+		if self._options.inputEventContent=='':
+			self._options.inputEventContent='REGEN'
+		else:
+			self._options.inputEventContent=self._options.inputEventContent+',REGEN'
+
 
 	self.scheduleSequence(sequence.split('.')[-1],'digitisation_step')
         return
@@ -2097,7 +2106,15 @@ class ConfigBuilder(object):
         self.pythonCfgCode += "# using: \n# "+__version__[1:-1]+"\n# "+__source__[1:-1]+'\n'
         self.pythonCfgCode += "# with command line options: "+self._options.arguments+'\n'
         self.pythonCfgCode += "import FWCore.ParameterSet.Config as cms\n\n"
-        self.pythonCfgCode += "process = cms.Process('"+self.process.name_()+"')\n\n"
+        if hasattr(self._options,"era") and self._options.era :
+            self.pythonCfgCode += "from Configuration.StandardSequences.Eras import eras\n\n"
+            self.pythonCfgCode += "process = cms.Process('"+self.process.name_()+"'" # Start of the line, finished after the loop
+            # Multiple eras can be specified in a comma seperated list
+            for requestedEra in self._options.era.split(",") :
+                self.pythonCfgCode += ",eras."+requestedEra
+            self.pythonCfgCode += ")\n\n" # end of the line
+        else :
+            self.pythonCfgCode += "process = cms.Process('"+self.process.name_()+"')\n\n"
 
         self.pythonCfgCode += "# import of standard configurations\n"
         for module in self.imports:

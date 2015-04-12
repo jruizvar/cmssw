@@ -29,6 +29,7 @@ PileupJetIdAlgo::PileupJetIdAlgo(const edm::ParameterSet & ps)
 	    tmvaSpectators_      = ps.getParameter<std::vector<std::string> >("tmvaSpectators");
 	    version_             = ps.getParameter<int>("version");
 	  }
+        else version_ = USER;
 	reader_              = nullptr;
 	edm::ParameterSet jetConfig = ps.getParameter<edm::ParameterSet>("JetIdParams");
 	for(int i0 = 0; i0 < 3; i0++) { 
@@ -392,6 +393,14 @@ PileupJetIdentifier PileupJetIdAlgo::computeIdVariables(const reco::Jet * jet, f
 			  lLeadCh = icand;
 			
 			  const reco::Track* pfTrk = icand->bestTrack();
+			  if (lPF && std::abs(icand->pdgId()) == 13 && pfTrk == nullptr){
+			    reco::MuonRef lmuRef = lPF->muonRef();
+			    if (lmuRef.isNonnull()){
+			      const reco::Muon& lmu = *lmuRef.get();
+			      pfTrk = lmu.bestTrack();
+			      edm::LogWarning("BadMuon")<<"Found a PFCandidate muon without a trackRef: falling back to Muon::bestTrack ";
+			    }
+			  }
 			  if(pfTrk==nullptr) { //protection against empty pointers for the miniAOD case
 			    //To handle the electron case
 			    if(lPF!=nullptr) {
