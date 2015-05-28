@@ -162,6 +162,7 @@ def prepareGenMixing(process):
 
     # Use generalTracks where DIGI-RECO mixing requires preMixTracks
     process.generalConversionTrackProducer.TrackProducer = cms.string('generalTracks')
+    process.generalConversionTrackProducerTmp.TrackProducer = cms.string('generalTracks')
     process.trackerDrivenElectronSeedsTmp.TkColList = cms.VInputTag(cms.InputTag("generalTracks"))
     process.trackerDrivenElectronSeeds.oldTrackCollection = "generalTracks"
 
@@ -173,6 +174,8 @@ def prepareGenMixing(process):
                                    cms.PSet(type=cms.string('TrackingRecHitsOwned')),
                                    cms.PSet(type=cms.string('floatedmValueMap')))
         }
+    process.hltIter4HighPtMerged = cms.EDAlias(**_parameters)
+    process.hltIter2HighPtMerged = cms.EDAlias(**_parameters)
     process.hltIter4Merged = cms.EDAlias(**_parameters)
     process.hltIter2Merged = cms.EDAlias(**_parameters)
     process.hltIter4Tau3MuMerged = cms.EDAlias(**_parameters)
