@@ -262,7 +262,7 @@ def configureHEEPElectronID_V60(wpEB, wpEE):
     containing the cuts for the Barrel (EB) and the other one for the Endcap (EE).
     """
     parameterSet = cms.PSet(
-        idName = cms.string("heepElectronID-HEEPV60"),
+        idName = cms.string(wpEB.idName), # same name stored in the _EB and _EE objects
         cutFlow = cms.VPSet(
             psetMinPtCut(),                               #0
             psetGsfEleSCEtaMultiRangeCut(),               #1
