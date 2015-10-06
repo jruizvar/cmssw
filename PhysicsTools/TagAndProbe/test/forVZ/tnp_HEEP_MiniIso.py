@@ -59,7 +59,7 @@ process.miniIsoElectronsMap = cms.EDProducer("PatElectronMiniIsolationValueMap",
 
 process.miniIsolatedGoodElectrons = cms.EDProducer("MiniIsolationSelector",
                                                    input         = cms.InputTag("goodElectrons"),
-                                                   cut           = cms.string(options['ELECTRON_TAG_CUTS']),
+                                                   cut           = cms.string(options['ELECTRON_CUTS']),
                                                    selection     = cms.InputTag("miniIsoElectronsMap"),
                                                    id_cut        = cms.double(0.1),
                                                    isGreaterThan = cms.bool(False)
